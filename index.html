@@ -1,0 +1,111 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Carcassonne</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #FFFFFF;
+    }
+    canvas {
+      margin: 0 auto;
+      display: block;
+    }
+    #debug {
+      position: fixed;
+      width: 200px;
+      background: rgba(200,200,200,0.5);
+      top: 40px;
+      right: 0;
+    }
+    .info {
+      display: inline-block;
+      position: absolute;
+    }
+    .row {
+      padding: 0px;
+      border-bottom: 0px solid #000;
+    }
+    .user-block {
+      display: inline-block;
+      width: 100px;
+      height: 60px;
+      background: #EEE;
+    }
+    #block, #follower, #rotate {
+      border: 0px solid transparent;
+      width: 200px;
+      height: 160px;
+      cursor: pointer;
+    }
+    #block {
+      display: none;
+    }
+    #block:hover, #follower:hover, #rotate:hover {
+      color: white;
+      background: rgba(0,0,0,0.5);
+    }
+  </style>
+
+  <script src="public/vendor/pixi.dev.js"></script>
+  <script src="public/vendor/jquery.min.js"></script>
+  <script src="public/vendor/underscore-min.js"></script>
+
+</head>
+<body>
+  <div id="user"></div>
+  <div id="score_board">
+    <div class="user-block">Player 1: <div id="u1"></div></div>
+    <div class="user-block">Player 2: <div id="u2"></div></div>
+    <div class="user-block">Player 3: <div id="u3"></div></div>
+    <div class="user-block">Player 4: <div id="u4"></div></div>
+  </div>
+  <div class="panel">
+    <span>block #:</span>
+    <input type="text" class="block-n">
+    <span>dx:</span>
+    <input type="text" class="dx">
+    <span>dy:</span>
+    <input type="text" class="dy">
+    <button id="move">Go</button>
+  </div>
+  <div class="pause">Pause</div>
+  <div class="info">
+    <div class="info-board"></div>
+  </div>
+  <div id="debug">
+    <div class="row"></div>
+    <div class="row"></div>
+    <div class="row"></div>
+<!--     <div class="row">
+      <button id="block">Place Block</button>
+    </div> -->
+<!--     <div class="row">
+      <button id="follower">Finish</button>
+    </div>
+    <div class="row"></div>
+    <div class="row">
+      <button id="rotate">Rotate</button>
+    </div> -->
+  </div>
+
+  <script src="public/main.js"></script>
+  <script type="text/javascript">
+    var select = document.querySelectorAll
+    var stage = new PIXI.Stage(0x888888)
+    var renderer = PIXI.autoDetectRenderer(928 ,788)
+
+    var SQ = {};
+    SQ.playground = new Playground();
+    // document.getElementById('restart').addEventListener('click', function() {
+    //  stage = new PIXI.Stage(0x000000, true)
+    //  renderer = PIXI.autoDetectRenderer(1200,1200)
+    //  document.body.appendChild(renderer.view)
+    //  play = new Playground(TEST);
+    // }, false);
+  </script>
+  <!-- <script src="//localhost:35719/livereload.js"></script> -->
+
+</body>
+</html>
