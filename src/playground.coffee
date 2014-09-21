@@ -38,12 +38,14 @@ BLOCK = [
 
 class Playground
   constructor: ()->
-    @Users = new Users(4)
+    @initUser(2)
     @initContainer()
     @initGameControl()
+    # @initFBSync()
     @loadResource () =>
       @initGrid()
       @initBlock BLOCK, @Block_el
+      @drawBlockPanel(BLOCK)
       # @initUserUI()
       @UnitTest()
       requestAnimFrame(animate)
@@ -62,7 +64,13 @@ class Playground
   # 3: todo
   Grid: []
 
-  CurrentUser: {}
+  currentPlayer: {}
+
+  turn: 0
+  step: 0
+
+  initUser: (n) ->
+    SQ.Users = new Users(n)
 
   loadResource: (onFinishLoading) ->
     tileAtlas = ["public/images.json"]
@@ -89,6 +97,37 @@ class Playground
       x = parseInt $('.dx').val()
       y = parseInt $('.dy').val()
       self.placeN(n, x, y)
+
+  initFBSync: () ->
+    window.FBref = new Firebase("https://squares-game.firebaseio.com/");
+
+    # TODO manage game room session
+    ref = FBref.child('game')
+    ref.on 'value', (snapshot) =>
+      val = snapshot.val()
+      console.log(val)
+      if val is null
+        FBref.set
+          game: {}
+        @createNewGame()
+
+    ref.on 'child_added', (snapshot) =>
+      newStep = snapshot.val()
+      console.log(newStep);
+      # @execStep(newStep);
+
+  createNewGame: () ->
+    ref = FBref.child('game')
+
+    ref.on 'child_added', (snapshot) ->
+      console.log(snapshot.val())
+    ref.push
+      gameSession: 'session-' + Date.now()
+
+  execStep: (step) =>
+    pos = JSON.parse step.pos
+    if step.player != @currentPlayer.id
+      @placeN(step.blockOrder, pos[0], pos[1])
 
   getCoord: (ix, iy) ->
     margin = 74
@@ -139,6 +178,25 @@ class Playground
     drawGrid()
     SQ.Grid = self.Grid
 
+  drawBlockPanel: (blocks) ->
+    self = this
+    SQ.panel = blockPanel = new PIXI.DisplayObjectContainer()
+    blockPanel.position.x = 788 - 60
+    blockPanel.position.y = 10
+    blockPanel.width = 32
+    blockPanel.height = 700
+    blockPanel.interactive = true
+    # blockPanel.hitArea = new PIXI.Rectangle(788-60, 10, 32, 700)
+
+    # blockPanel.mouseover = blockPanel.mousedown = blockPanel.touchstart = (data) ->
+    #   console.log data
+
+    blocks.map (b, bi) =>
+      block = SQ.playground.Blocks.drawBlock(b, bi, 0)
+      blockPanel.addChild(block)
+
+    stage.addChild(blockPanel)
+
   getStat: (x, y) =>
     return 0 if x < 0 or y < 0
     return @Grid[y][x][2]
@@ -158,26 +216,43 @@ class Playground
       return false
 
   addCorners: (block) ->
+    userId = SQ.Users.current().id
     for c in block.corners
       pos = [block.gx + c[0], block.gy + c[1]]
       if @withinGrid(pos)
-        @corners[pos.toString()] = true
-        @Grid[block.gy + c[1]][block.gx + c[0]][2] = 'c';
+        @corners[pos.toString()] = userId + '.c'
+        # @Grid[block.gy + c[1]][block.gx + c[0]][2] = userId + '.c';
     console.log(@corners)
 
   addBorders: (block) ->
+    userId = SQ.Users.current().id
     for b in block.borders
       pos = [block.gx + b[0], block.gy + b[1]]
       if @withinGrid(pos)
-        @borders[pos.toString()] = true
-        @Grid[block.gy + b[1]][block.gx + b[0]][2] = 'b';
-
+        @borders[pos.toString()] = userId + '.b'
+        # @Grid[block.gy + b[1]][block.gx + b[0]][2] = userId + '.b';
     console.log(@borders)
+
+  isOnCorners: (pos) ->
+    userId = SQ.Users.current().id
+    mark = @corners[pos.toString()]
+    if mark and mark.split('.')[0] is userId.toString()
+      return true
+    else
+      return false
+
+  isOnBorders: (pos) ->
+    userId = SQ.Users.current().id
+    mark = @borders[pos.toString()]
+    if mark and mark.split('.')[0] is userId.toString()
+      return true
+    else
+      return false
 
   # TODO: add corner check to placable
   placable: (block, x, y) =>
-    flag = true
-    flag = false unless @corners[[x, y].toString()]
+    flag = false
+    # flag = false unless @corners[[x, y].toString()]
 
     # inside grid
     for pos in block.coord
@@ -186,24 +261,34 @@ class Playground
       if _x > 19 or x < 0 or _y > 19 or _y < 0
         return false
 
+    # test first step should be at the corner
+    if @step is 0
+      validFistStep = false
+      for pos in block.coord
+        _x = x + pos[0]
+        _y = y + pos[1]
+        validFistStep = true if _x is 19 and _y is 19
+      return unless validFistStep
+
     # at least one block in current corners
     block.coord.map (pos) =>
-      flag = true if @corners[[x + pos[0], y + pos[1]].toString()]
+      flag = true if @isOnCorners([x + pos[0], y + pos[1]])
 
     # none in border blocks.
     block.coord.map (pos) =>
-      flag = false if @borders[[x + pos[0], y + pos[1]].toString()]
-
-    # block.corners.map (c) =>
-    #   flag = false if @corners[c.toString()]
+      flag = false if @isOnBorders([x + pos[0], y + pos[1]])
 
     # first block
     flag = true if Object.keys(@corners).length is 0
 
     # should be empty
     block.coord.map (rp) =>
-      flag = false if SQ.playground.getStat(x + rp[0], y + rp[1]) is 1
+      flag = false if @occupied(x + rp[0], y + rp[1])
     return flag
+
+  # occupied by either user
+  occupied: (x, y) ->
+    SQ.playground.getStat(x, y) is 1
 
   placeN: (n, x, y) =>
     block = @Blocks.getBlock(n)
@@ -214,12 +299,14 @@ class Playground
     else
       SQ.board.addChild(block)
 
-    if placable(block, x, y)
-      @place(block, x, y)
+    if @placable(block, x, y)
+      @place(block, x, y, true)
     else
       @placeBack(block)
+    @udpateInfoBoard()
 
-  place: (block, x, y) =>
+
+  place: (block, x, y, fromSync) =>
     # ix = Math.floor((x - 74) / 32)
     # iy = Math.floor((y - 74) / 32)
     block.put = true
@@ -232,14 +319,35 @@ class Playground
     block.gx = x
     block.gy = y
 
+  finishPlace: (block, fromSync) =>
+    block.finish = true
     # relative position
     block.coord.map (rp) =>
-      @setOccupied(x + rp[0], y + rp[1], 1)
+      @setOccupied(block.gx + rp[0], block.gy + rp[1], 1)
 
     @addCorners(block)
     @addBorders(block)
 
     @udpateInfoBoard()
+    # unless fromSync
+    #   @pushPlace(block, x, y)
+
+    @step += 1
+    if SQ.Users.turnFinished
+      @turn += 1
+
+    SQ.Users.nextTurn()
+
+  pushPlace: (block, x, y) ->
+    ref = FBref.child('game')
+    data =
+      player: @currentPlayer.id
+      grid: JSON.stringify @Grid
+      step: @step
+      blockOrder: block.order
+      pos: JSON.stringify [x, y]
+
+    ref.push data
 
   unplace: (block) ->
     block.put = false
@@ -266,7 +374,7 @@ class Playground
   initBlock: (blocks, texure) ->
     @Blocks = new Blocks blocks, @next, @Users, this
 
-    @currentUser = @Users.nextUser()
+    # @currentUser = @Users.nextUser()
     # @setUserUI()
 
   next: =>

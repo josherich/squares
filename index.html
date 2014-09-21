@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-  <title>Carcassonne</title>
+  <title>Squares</title>
   <style>
     body {
       margin: 0;
@@ -51,6 +51,7 @@
   <script src="public/vendor/pixi.dev.js"></script>
   <script src="public/vendor/jquery.min.js"></script>
   <script src="public/vendor/underscore-min.js"></script>
+  <script src="https://cdn.firebase.com/js/client/1.0.21/firebase.js"></script>
 
 </head>
 <body>
@@ -97,7 +98,11 @@
     var renderer = PIXI.autoDetectRenderer(928 ,788)
 
     var SQ = {};
+    SQ.Mediator = Mediator;
     SQ.playground = new Playground();
+    SQ.AI = new AI(SQ.playground);
+
+    var FBref = new Firebase("https://squares-game.firebaseio.com/");
     // document.getElementById('restart').addEventListener('click', function() {
     //  stage = new PIXI.Stage(0x000000, true)
     //  renderer = PIXI.autoDetectRenderer(1200,1200)

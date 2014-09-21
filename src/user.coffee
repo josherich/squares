@@ -1,13 +1,25 @@
 class Users
-  constructor: (@num) ->
-    @_users.push(new User(i)) for i in [1..@num]
-
+  finishTurn: false
   _users: []
+  userIndex: 0
 
-  nextUser: ->
-    @num = @_users.length if @num is 0
-    console.log @num
-    return @_users[--@num]
+  constructor: (n) ->
+    if n is 2
+      me = new User(this, 'human', 0)
+      you = new User(this, 'ai', 1)
+      @_users.push(me)
+      @_users.push(you)
+
+  current: () ->
+    @_users[@userIndex]
+
+  nextUser: () ->
+    @userIndex = SQ.playground.step % @_users.length
+
+  nextTurn: () ->
+    @nextUser()
+    SQ.Mediator.publish 'nextOne', @current()
+    @setUserUI()
 
   scoring: (type, id, score) ->
     console.log @_users
@@ -16,15 +28,26 @@ class Users
   getScore: (id) ->
     return @_users[id - 1]['road'] + @_users[id - 1]['castle']
 
+  setUserUI: () ->
+
 class User
-  constructor: (@id) ->
-
   id: 0
+  type: null
   score: 0
+  parent: {}
 
-  setUI: ->
-    selector = 'player' + @id
-    document.getElementById(selector).innerHTML = 'player ' + @id + ' ongoing'
+  constructor: (parent, type, id) ->
+    @parent = parent
+    @type = type
+    @id = id
+    SQ.Mediator.subscribe 'nextOne', (user) =>
+      @think()
 
-  getBlock: (block)->
-    @placeBlock(block)
+  think: () ->
+    if @type is 'ai' and @parent.userIndex is @id
+      SQ.AI.compute()
+    # wait confirm if it's human
+
+  isHuman: () ->
+    return @type is 'human'
+
