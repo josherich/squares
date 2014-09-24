@@ -33,6 +33,8 @@ class Blocks
       return @flipCoordV(co)
     block.borders = block.borders.map (co) =>
       return @flipCoordV(co)
+    block.cornerDots = block.cornerDots.map (co) =>
+      return @flipCoordV(co)
 
     @updateDots(block)
 
@@ -42,6 +44,8 @@ class Blocks
     block.corners = block.corners.map (co) =>
       return @flipCoordH(co)
     block.borders = block.borders.map (co) =>
+      return @flipCoordH(co)
+    block.cornerDots = block.cornerDots.map (co) =>
       return @flipCoordH(co)
 
     @updateDots(block)
@@ -53,6 +57,8 @@ class Blocks
       return @rotateCoordCW(co)
     block.borders = block.borders.map (co) =>
       return @rotateCoordCW(co)
+    block.cornerDots = block.cornerDots.map (co) =>
+      return @rotateCoordCW(co)
 
     @updateDots(block)
 
@@ -62,6 +68,8 @@ class Blocks
     block.corners = block.corners.map (co) =>
       return @rotateCoordACW(co)
     block.borders = block.borders.map (co) =>
+      return @rotateCoordACW(co)
+    block.cornerDots = block.cornerDots.map (co) =>
       return @rotateCoordACW(co)
 
     @updateDots(block)
@@ -84,6 +92,7 @@ class Blocks
     dotArray = []
     corners = []
     borders = []
+    cornerDots = []
     tempMap = {}
     block.coord.map (pos) ->
       tempMap[pos.toString()] = 1
@@ -125,7 +134,11 @@ class Blocks
         # return SQ.playground.getStat(pos[0], pos[1]) is 1
       # TODO get dots other than corners
       m = n.filter (pos) ->
-        return d[0] isnt pos[0] and d[1] isnt pos[1]
+        if d[0] isnt pos[0] and d[1] isnt pos[1]
+          cornerDots.push [pos[0], pos[1]]
+          return true
+        else
+          return false
 
       return m.length is 1 and n.length is 1
 
@@ -136,8 +149,7 @@ class Blocks
         return pos
       return flag
 
-    console.log(borders)
-    return [corners, borders]
+    return [corners, borders, cornerDots]
 
 
   getCorners: (block) ->
@@ -155,6 +167,7 @@ class Blocks
       @addControlPanel(block)
 
   addControlPanel: (block) ->
+    return if block.confirm
     offsetx = 80
     Circle = (x, y, radius) ->
       res = new PIXI.Graphics()
@@ -170,26 +183,26 @@ class Blocks
       block.addChild(res)
       return res
 
-    fliph = Circle(10 + offsetx, 10, 10)
-    flipv = Circle(10 + offsetx, 30, 10)
-    confirm = Circle(30 + offsetx, 20, 10)
+    block.fliph = Circle(10 + offsetx, 10, 10)
+    block.flipv = Circle(10 + offsetx, 30, 10)
+    block.confirm = Circle(30 + offsetx, 20, 10)
     console.log(confirm)
-    rotatecw = Circle(50 + offsetx, 10, 10)
-    rotateacw = Circle(50 + offsetx, 30, 10)
+    block.rotatecw = Circle(50 + offsetx, 10, 10)
+    block.rotateacw = Circle(50 + offsetx, 30, 10)
 
-    confirm.mouseup = (data) =>
+    block.confirm.mouseup = (data) =>
       SQ.playground.finishPlace(block)
 
-    fliph.mouseup = (data) =>
+    block.fliph.mouseup = (data) =>
       @transBlock(block, 'flipH')
 
-    flipv.mouseup = (data) =>
+    block.flipv.mouseup = (data) =>
       @transBlock(block, 'flipV')
 
-    rotatecw.mouseup = (data) =>
+    block.rotatecw.mouseup = (data) =>
       @transBlock(block, 'rotateCW')
 
-    rotateacw.mouseup = (data) =>
+    block.rotateacw.mouseup = (data) =>
       @transBlock(block, 'rotateACW')
 
 
@@ -267,6 +280,7 @@ class Blocks
     com = self.computeCorners(block)
     block.corners = com[0]
     block.borders = com[1]
+    block.cornerDots = com[2]
 
     self._blocks[index] = block
     return block

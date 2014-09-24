@@ -45,7 +45,9 @@ class User
 
   think: () ->
     if @type is 'ai' and @parent.userIndex is @id
+      SQ.AI.updateState()
       SQ.AI.compute()
+      SQ.Users.finishTurn = true
     # wait confirm if it's human
 
   isHuman: () ->

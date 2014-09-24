@@ -328,6 +328,9 @@ class Playground
     @addCorners(block)
     @addBorders(block)
 
+    @removeControlPanel(block)
+    @removeEvent(block)
+
     @udpateInfoBoard()
     # unless fromSync
     #   @pushPlace(block, x, y)
@@ -335,8 +338,26 @@ class Playground
     @step += 1
     if SQ.Users.turnFinished
       @turn += 1
+      SQ.Users.turnFinished = false
 
     SQ.Users.nextTurn()
+
+  removeControlPanel: (block) ->
+    block.removeChild(block.fliph)
+    block.removeChild(block.flipv)
+    block.removeChild(block.confirm)
+    block.removeChild(block.rotatecw)
+    block.removeChild(block.rotateacw)
+
+  removeEvent: (block) ->
+    block.mouseover = block.mouseout = null
+
+    block.mousedown = block.touchstart = null
+
+    block.mouseup = block.mouseupoutside = block.touchend = block.touchendoutside = null
+
+    block.mousemove = block.touchmove = null
+
 
   pushPlace: (block, x, y) ->
     ref = FBref.child('game')

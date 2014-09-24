@@ -10,22 +10,217 @@ AI = (function() {
 
   AI.prototype.strategyMode = [];
 
-  AI.prototype.updateState = function() {};
+  AI.prototype.corners = {};
+
+  AI.prototype.borders = {};
+
+  AI.prototype.grid = {};
+
+  AI.prototype.step = 0;
+
+  AI.prototype.turn = 0;
+
+  AI.prototype.move = null;
+
+  AI.prototype.getBlock = function(i) {
+    if (i < 0 || i > 20) {
+      return null;
+    }
+    return SQ.playground.Blocks.getBlock(i);
+  };
+
+  AI.prototype.updateState = function() {
+    this.turn = SQ.playground.turn;
+    return this.computeState();
+  };
+
+  AI.prototype.withinGrid = function(pos) {
+    if (pos[0] > -1 && pos[0] < 20 && pos[1] > -1 && pos[1] < 20) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  AI.prototype.addCorners = function(block, x, y) {
+    var c, pos, userId, _i, _len, _ref;
+    userId = SQ.Users.current().id;
+    _ref = block.corners;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      c = _ref[_i];
+      pos = c;
+      if (this.withinGrid(pos)) {
+        if (this.corners[pos.toString()]) {
+          this.corners[pos.toString()][userId] = true;
+        } else {
+          this.corners[pos.toString()] = {};
+          this.corners[pos.toString()][userId] = true;
+        }
+      }
+    }
+    return console.log(this.corners);
+  };
+
+  AI.prototype.addBorders = function(block, x, y) {
+    var b, pos, userId, _i, _len, _ref;
+    userId = SQ.Users.current().id;
+    _ref = block.borders;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      b = _ref[_i];
+      pos = [x + b[0], y + b[1]];
+      if (this.withinGrid(pos)) {
+        if (this.borders[pos.toString()]) {
+          this.borders[pos.toString()][userId] = true;
+        } else {
+          this.borders[pos.toString()] = {};
+          this.borders[pos.toString()][userId] = true;
+        }
+      }
+    }
+    return console.log(this.borders);
+  };
 
   AI.prototype.computeState = function() {};
 
   AI.prototype.computeValue = function() {};
 
-  AI.prototype.computeStartupSteps = function() {};
+  AI.prototype.countCorners = function(block, dot) {
+    var len;
+    this.addCorners(block, dot[0], dot[1]);
+    len = Object.keys(this.corners).length;
+    if (dot[0] === 0 && dot[1] === 3) {
+      console.log(this.corners);
+    }
+    this.corners = [];
+    return len;
+  };
 
-  AI.prototype.computeSteps = function() {};
+  AI.prototype.ajustCoord = function(block, dot) {
+    block.corners = block.corners.map(function(d) {
+      return [d[0] - dot[0], d[1] - dot[1]];
+    });
+    block.borders = block.borders.map(function(d) {
+      return [d[0] - dot[0], d[1] - dot[1]];
+    });
+    return block.coord = block.coord.map(function(d) {
+      return [d[0] - dot[0], d[1] - dot[1]];
+    });
+  };
 
-  AI.prototype.computeExpertRules = function() {};
+  AI.prototype.recoverCoord = function(block, dot) {
+    block.corners = block.corners.map(function(d) {
+      return [d[0] + dot[0], d[1] + dot[1]];
+    });
+    block.borders = block.borders.map(function(d) {
+      return [d[0] + dot[0], d[1] + dot[1]];
+    });
+    return block.coord = block.coord.map(function(d) {
+      return [d[0] + dot[0], d[1] + dot[1]];
+    });
+  };
+
+  AI.prototype.validFirstMove = function(block) {
+    var flag;
+    flag = true;
+    block.coord.map(function(d) {
+      if (d[0] < 0 || d[1] < 0) {
+        return flag = false;
+      }
+    });
+    return flag;
+  };
+
+  AI.prototype.computeFirstMove = function() {
+    var block, move, rand, res;
+    block = null;
+    rand = Date.now() % 8;
+    res = [];
+    [1, 2, 3, 6, 7, 8, 9, 11].map((function(_this) {
+      return function(i, index) {
+        if (index === rand) {
+          block = _this.getBlock(i);
+          return console.log(i);
+        }
+      };
+    })(this));
+    console.log(block.coord);
+    console.log(block.corners);
+    SQ.playground.Blocks.rotateCW(block);
+    console.log(block.coord);
+    console.log(block.corners);
+    block.cornerDots.map((function(_this) {
+      return function(dot) {
+        _this.ajustCoord(block, dot);
+        if (_this.validFirstMove(block)) {
+          console.log(block.corners);
+          res.push('1,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        }
+        return _this.recoverCoord(block, dot);
+      };
+    })(this));
+    SQ.playground.Blocks.rotateCW(block);
+    block.cornerDots.map((function(_this) {
+      return function(dot) {
+        _this.ajustCoord(block, dot);
+        if (_this.validFirstMove(block)) {
+          res.push('2,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        }
+        return _this.recoverCoord(block, dot);
+      };
+    })(this));
+    SQ.playground.Blocks.rotateCW(block);
+    block.cornerDots.map((function(_this) {
+      return function(dot) {
+        _this.ajustCoord(block, dot);
+        if (_this.validFirstMove(block)) {
+          res.push('3,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        }
+        return _this.recoverCoord(block, dot);
+      };
+    })(this));
+    res.sort(function(a, b) {
+      var m, n;
+      m = parseInt(a.split(',')[3]);
+      n = parseInt(b.split(',')[3]);
+      if (m - n > 0) {
+        return 1;
+      } else if (m - n === 0) {
+        return 0;
+      } else if (m - n < 0) {
+        return -1;
+      }
+    });
+    return move = console.log(res);
+  };
+
+  AI.prototype.computeStartupMoves = function() {
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((function(_this) {
+      return function(i) {
+        var block;
+        return block = _this.getBlock(i);
+      };
+    })(this));
+  };
+
+  AI.prototype.computeMoves = function() {};
+
+  AI.prototype.computeEndingMoves = function() {};
+
+  AI.prototype.applyExpertRules = function() {};
 
   AI.prototype.switchStrategyMode = function() {};
 
   AI.prototype.compute = function() {
-    console.log("I'm thinking, bitch!");
+    if (this.turn === 0) {
+      this.computeFirstMove();
+    } else if (this.turn < 5) {
+      this.computeStartupMoves();
+    } else if (this.turn > 5 && this.turn < 18) {
+      this.computeMoves();
+    } else if (this.turn > 17) {
+      this.computeEndingMoves();
+    }
+    console.log("I'm done thinking, bitch!");
     this.makeMove();
     SQ.playground.step += 1;
     SQ.playground.turn += 1;
@@ -95,6 +290,11 @@ Blocks = (function() {
         return _this.flipCoordV(co);
       };
     })(this));
+    block.cornerDots = block.cornerDots.map((function(_this) {
+      return function(co) {
+        return _this.flipCoordV(co);
+      };
+    })(this));
     return this.updateDots(block);
   };
 
@@ -110,6 +310,11 @@ Blocks = (function() {
       };
     })(this));
     block.borders = block.borders.map((function(_this) {
+      return function(co) {
+        return _this.flipCoordH(co);
+      };
+    })(this));
+    block.cornerDots = block.cornerDots.map((function(_this) {
       return function(co) {
         return _this.flipCoordH(co);
       };
@@ -133,6 +338,11 @@ Blocks = (function() {
         return _this.rotateCoordCW(co);
       };
     })(this));
+    block.cornerDots = block.cornerDots.map((function(_this) {
+      return function(co) {
+        return _this.rotateCoordCW(co);
+      };
+    })(this));
     return this.updateDots(block);
   };
 
@@ -148,6 +358,11 @@ Blocks = (function() {
       };
     })(this));
     block.borders = block.borders.map((function(_this) {
+      return function(co) {
+        return _this.rotateCoordACW(co);
+      };
+    })(this));
+    block.cornerDots = block.cornerDots.map((function(_this) {
       return function(co) {
         return _this.rotateCoordACW(co);
       };
@@ -177,11 +392,12 @@ Blocks = (function() {
   };
 
   Blocks.prototype.computeCorners = function(block) {
-    var borders, corners, dotArray, dotHash, getRoundCoord, pushSet, s, tempMap;
+    var borders, cornerDots, corners, dotArray, dotHash, getRoundCoord, pushSet, s, tempMap;
     dotHash = {};
     dotArray = [];
     corners = [];
     borders = [];
+    cornerDots = [];
     tempMap = {};
     block.coord.map(function(pos) {
       return tempMap[pos.toString()] = 1;
@@ -229,7 +445,12 @@ Blocks = (function() {
         return tempMap[pos.toString()] === 1;
       });
       m = n.filter(function(pos) {
-        return d[0] !== pos[0] && d[1] !== pos[1];
+        if (d[0] !== pos[0] && d[1] !== pos[1]) {
+          cornerDots.push([pos[0], pos[1]]);
+          return true;
+        } else {
+          return false;
+        }
       });
       return m.length === 1 && n.length === 1;
     });
@@ -244,8 +465,7 @@ Blocks = (function() {
       });
       return flag;
     });
-    console.log(borders);
-    return [corners, borders];
+    return [corners, borders, cornerDots];
   };
 
   Blocks.prototype.getCorners = function(block) {};
@@ -266,7 +486,10 @@ Blocks = (function() {
   };
 
   Blocks.prototype.addControlPanel = function(block) {
-    var Circle, confirm, fliph, flipv, offsetx, rotateacw, rotatecw;
+    var Circle, offsetx;
+    if (block.confirm) {
+      return;
+    }
     offsetx = 80;
     Circle = function(x, y, radius) {
       var res;
@@ -283,33 +506,33 @@ Blocks = (function() {
       block.addChild(res);
       return res;
     };
-    fliph = Circle(10 + offsetx, 10, 10);
-    flipv = Circle(10 + offsetx, 30, 10);
-    confirm = Circle(30 + offsetx, 20, 10);
+    block.fliph = Circle(10 + offsetx, 10, 10);
+    block.flipv = Circle(10 + offsetx, 30, 10);
+    block.confirm = Circle(30 + offsetx, 20, 10);
     console.log(confirm);
-    rotatecw = Circle(50 + offsetx, 10, 10);
-    rotateacw = Circle(50 + offsetx, 30, 10);
-    confirm.mouseup = (function(_this) {
+    block.rotatecw = Circle(50 + offsetx, 10, 10);
+    block.rotateacw = Circle(50 + offsetx, 30, 10);
+    block.confirm.mouseup = (function(_this) {
       return function(data) {
         return SQ.playground.finishPlace(block);
       };
     })(this);
-    fliph.mouseup = (function(_this) {
+    block.fliph.mouseup = (function(_this) {
       return function(data) {
         return _this.transBlock(block, 'flipH');
       };
     })(this);
-    flipv.mouseup = (function(_this) {
+    block.flipv.mouseup = (function(_this) {
       return function(data) {
         return _this.transBlock(block, 'flipV');
       };
     })(this);
-    rotatecw.mouseup = (function(_this) {
+    block.rotatecw.mouseup = (function(_this) {
       return function(data) {
         return _this.transBlock(block, 'rotateCW');
       };
     })(this);
-    return rotateacw.mouseup = (function(_this) {
+    return block.rotateacw.mouseup = (function(_this) {
       return function(data) {
         return _this.transBlock(block, 'rotateACW');
       };
@@ -414,6 +637,7 @@ Blocks = (function() {
     com = self.computeCorners(block);
     block.corners = com[0];
     block.borders = com[1];
+    block.cornerDots = com[2];
     self._blocks[index] = block;
     return block;
   };
@@ -906,12 +1130,30 @@ Playground = (function() {
     })(this));
     this.addCorners(block);
     this.addBorders(block);
+    this.removeControlPanel(block);
+    this.removeEvent(block);
     this.udpateInfoBoard();
     this.step += 1;
     if (SQ.Users.turnFinished) {
       this.turn += 1;
+      SQ.Users.turnFinished = false;
     }
     return SQ.Users.nextTurn();
+  };
+
+  Playground.prototype.removeControlPanel = function(block) {
+    block.removeChild(block.fliph);
+    block.removeChild(block.flipv);
+    block.removeChild(block.confirm);
+    block.removeChild(block.rotatecw);
+    return block.removeChild(block.rotateacw);
+  };
+
+  Playground.prototype.removeEvent = function(block) {
+    block.mouseover = block.mouseout = null;
+    block.mousedown = block.touchstart = null;
+    block.mouseup = block.mouseupoutside = block.touchend = block.touchendoutside = null;
+    return block.mousemove = block.touchmove = null;
   };
 
   Playground.prototype.pushPlace = function(block, x, y) {
@@ -1109,7 +1351,9 @@ User = (function() {
 
   User.prototype.think = function() {
     if (this.type === 'ai' && this.parent.userIndex === this.id) {
-      return SQ.AI.compute();
+      SQ.AI.updateState();
+      SQ.AI.compute();
+      return SQ.Users.finishTurn = true;
     }
   };
 
