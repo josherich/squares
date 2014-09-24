@@ -75,7 +75,7 @@ class AI
     return len
 
   # adjust relative coord to dot[0,0]
-  ajustCoord: (block, dot) ->
+  adjustCoord: (block, dot) ->
     block.corners = block.corners.map (d) ->
       return [d[0] - dot[0], d[1] - dot[1]]
 
@@ -102,6 +102,52 @@ class AI
         flag = false
     flag
 
+  makeRotate: (block, n) ->
+    if n > 6 or n < 0
+      throw new Error('rotate wrong n')
+    [0...Math.min(n, 3)].map () ->
+      SQ.playground.Blocks.rotateCW(block)
+    if n > 3
+      SQ.playground.Blocks.flipH(block)
+    if n > 4
+      [4...n].map () ->
+        SQ.playground.Blocks.rotateCW(block)
+
+  iterateRotate: (block) ->
+    res = new SQ.Fun.Set()
+
+    block.cornerDots.map (dot) =>
+      @adjustCoord(block, dot)
+      if @validFirstMove(block)
+        res.push '0,' + dot.toString() + ',' + @countCorners(block, dot)
+      @recoverCoord(block, dot)
+
+    [1,2,3].map (i) =>
+      SQ.playground.Blocks.rotateCW(block)
+      block.cornerDots.map (dot) =>
+        @adjustCoord(block, dot)
+        if @validFirstMove(block)
+          res.push i + ',' + dot.toString() + ',' + @countCorners(block, dot)
+        @recoverCoord(block, dot)
+
+    SQ.playground.Blocks.flipH(block)
+    block.cornerDots.map (dot) =>
+      @adjustCoord(block, dot)
+      if @validFirstMove(block)
+        res.push '4,' + dot.toString() + ',' + @countCorners(block, dot)
+      @recoverCoord(block, dot)
+
+    [5,6,7].map (i) =>
+      SQ.playground.Blocks.rotateCW(block)
+      block.cornerDots.map (dot) =>
+        @adjustCoord(block, dot)
+        if @validFirstMove(block)
+          res.push i + ',' + dot.toString() + ',' + @countCorners(block, dot)
+        @recoverCoord(block, dot)
+
+    res.array()
+
+
   computeFirstMove: ->
     block = null
     rand = Date.now() % 8
@@ -110,52 +156,36 @@ class AI
     [1,2,3,6,7,8,9,11].map (i, index) =>
       if index is rand
         block = @getBlock(i)
-        console.log(i)
 
-
-    console.log block.coord
-    console.log block.corners
-
-    SQ.playground.Blocks.rotateCW(block)
-    console.log block.coord
-    console.log block.corners
-
-    block.cornerDots.map (dot) =>
-      @ajustCoord(block, dot)
-      if @validFirstMove(block)
-        console.log block.corners
-        res.push '1,' + dot.toString() + ',' + @countCorners(block, dot)
-      @recoverCoord(block, dot)
-
-
-    SQ.playground.Blocks.rotateCW(block)
-    block.cornerDots.map (dot) =>
-      @ajustCoord(block, dot)
-      if @validFirstMove(block)
-        res.push '2,' + dot.toString() + ',' + @countCorners(block, dot)
-      @recoverCoord(block, dot)
-
-    SQ.playground.Blocks.rotateCW(block)
-    block.cornerDots.map (dot) =>
-      @ajustCoord(block, dot)
-      if @validFirstMove(block)
-        res.push '3,' + dot.toString() + ',' + @countCorners(block, dot)
-      @recoverCoord(block, dot)
+    res = @iterateRotate(block)
 
 
     res.sort (a, b) ->
       m = parseInt(a.split(',')[3])
       n = parseInt(b.split(',')[3])
-      if m - n > 0
+      if m - n < 0
         return 1
       else if m - n == 0
         return 0
-      else if m - n < 0
+      else if m - n > 0
         return -1
 
-    move =
 
-    console.log(res)
+    move = @pickMove(res)
+    @makeMove(move, block)
+
+  makeMove: (move, block) ->
+    data = move.split(',')
+    rotateN = data[0]
+    value = data[3]
+    @makeRotate(block, rotateN)
+    SQ.playground.placeN(block.order, data[1], data[2])
+
+  pickMove: (moves) ->
+    console.log(moves)
+    return moves[0]
+
+
 
   # decide the first 4 or 5 steps before reaching anyone
   computeStartupMoves: ->

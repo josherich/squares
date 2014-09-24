@@ -1,4 +1,4 @@
-var AI, BLOCK, Blocks, MARGIN, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused,
+var AI, BLOCK, Blocks, Fun, MARGIN, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 AI = (function() {
@@ -95,7 +95,7 @@ AI = (function() {
     return len;
   };
 
-  AI.prototype.ajustCoord = function(block, dot) {
+  AI.prototype.adjustCoord = function(block, dot) {
     block.corners = block.corners.map(function(d) {
       return [d[0] - dot[0], d[1] - dot[1]];
     });
@@ -130,6 +130,81 @@ AI = (function() {
     return flag;
   };
 
+  AI.prototype.makeRotate = function(block, n) {
+    var _i, _j, _ref, _results, _results1;
+    if (n > 6 || n < 0) {
+      throw new Error('rotate wrong n');
+    }
+    (function() {
+      _results = [];
+      for (var _i = 0, _ref = Math.min(n, 3); 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
+      return _results;
+    }).apply(this).map(function() {
+      return SQ.playground.Blocks.rotateCW(block);
+    });
+    if (n > 3) {
+      SQ.playground.Blocks.flipH(block);
+    }
+    if (n > 4) {
+      return (function() {
+        _results1 = [];
+        for (var _j = 4; 4 <= n ? _j < n : _j > n; 4 <= n ? _j++ : _j--){ _results1.push(_j); }
+        return _results1;
+      }).apply(this).map(function() {
+        return SQ.playground.Blocks.rotateCW(block);
+      });
+    }
+  };
+
+  AI.prototype.iterateRotate = function(block) {
+    var res;
+    res = new SQ.Fun.Set();
+    block.cornerDots.map((function(_this) {
+      return function(dot) {
+        _this.adjustCoord(block, dot);
+        if (_this.validFirstMove(block)) {
+          res.push('0,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        }
+        return _this.recoverCoord(block, dot);
+      };
+    })(this));
+    [1, 2, 3].map((function(_this) {
+      return function(i) {
+        SQ.playground.Blocks.rotateCW(block);
+        return block.cornerDots.map(function(dot) {
+          _this.adjustCoord(block, dot);
+          if (_this.validFirstMove(block)) {
+            res.push(i + ',' + dot.toString() + ',' + _this.countCorners(block, dot));
+          }
+          return _this.recoverCoord(block, dot);
+        });
+      };
+    })(this));
+    SQ.playground.Blocks.flipH(block);
+    block.cornerDots.map((function(_this) {
+      return function(dot) {
+        _this.adjustCoord(block, dot);
+        if (_this.validFirstMove(block)) {
+          res.push('4,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        }
+        return _this.recoverCoord(block, dot);
+      };
+    })(this));
+    [5, 6, 7].map((function(_this) {
+      return function(i) {
+        SQ.playground.Blocks.rotateCW(block);
+        return block.cornerDots.map(function(dot) {
+          _this.adjustCoord(block, dot);
+          if (_this.validFirstMove(block)) {
+            res.push(i + ',' + dot.toString() + ',' + _this.countCorners(block, dot));
+          }
+          return _this.recoverCoord(block, dot);
+        });
+      };
+    })(this));
+    return res.array();
+  };
+
   AI.prototype.computeFirstMove = function() {
     var block, move, rand, res;
     block = null;
@@ -138,59 +213,39 @@ AI = (function() {
     [1, 2, 3, 6, 7, 8, 9, 11].map((function(_this) {
       return function(i, index) {
         if (index === rand) {
-          block = _this.getBlock(i);
-          return console.log(i);
+          return block = _this.getBlock(i);
         }
       };
     })(this));
-    console.log(block.coord);
-    console.log(block.corners);
-    SQ.playground.Blocks.rotateCW(block);
-    console.log(block.coord);
-    console.log(block.corners);
-    block.cornerDots.map((function(_this) {
-      return function(dot) {
-        _this.ajustCoord(block, dot);
-        if (_this.validFirstMove(block)) {
-          console.log(block.corners);
-          res.push('1,' + dot.toString() + ',' + _this.countCorners(block, dot));
-        }
-        return _this.recoverCoord(block, dot);
-      };
-    })(this));
-    SQ.playground.Blocks.rotateCW(block);
-    block.cornerDots.map((function(_this) {
-      return function(dot) {
-        _this.ajustCoord(block, dot);
-        if (_this.validFirstMove(block)) {
-          res.push('2,' + dot.toString() + ',' + _this.countCorners(block, dot));
-        }
-        return _this.recoverCoord(block, dot);
-      };
-    })(this));
-    SQ.playground.Blocks.rotateCW(block);
-    block.cornerDots.map((function(_this) {
-      return function(dot) {
-        _this.ajustCoord(block, dot);
-        if (_this.validFirstMove(block)) {
-          res.push('3,' + dot.toString() + ',' + _this.countCorners(block, dot));
-        }
-        return _this.recoverCoord(block, dot);
-      };
-    })(this));
+    res = this.iterateRotate(block);
     res.sort(function(a, b) {
       var m, n;
       m = parseInt(a.split(',')[3]);
       n = parseInt(b.split(',')[3]);
-      if (m - n > 0) {
+      if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
         return 0;
-      } else if (m - n < 0) {
+      } else if (m - n > 0) {
         return -1;
       }
     });
-    return move = console.log(res);
+    move = this.pickMove(res);
+    return this.makeMove(move, block);
+  };
+
+  AI.prototype.makeMove = function(move, block) {
+    var data, rotateN, value;
+    data = move.split(',');
+    rotateN = data[0];
+    value = data[3];
+    this.makeRotate(block, rotateN);
+    return SQ.playground.placeN(block.order, data[1], data[2]);
+  };
+
+  AI.prototype.pickMove = function(moves) {
+    console.log(moves);
+    return moves[0];
   };
 
   AI.prototype.computeStartupMoves = function() {
@@ -732,6 +787,31 @@ Mediator = {
         return _results;
       }
     }
+  }
+};
+
+Fun = {};
+
+Fun.Set = function(array) {
+  var a, _i, _len, _results;
+  this.set = {};
+  if (!(typeof array === "object" && array.length)) {
+    return;
+  }
+  _results = [];
+  for (_i = 0, _len = array.length; _i < _len; _i++) {
+    a = array[_i];
+    _results.push(this.set[a.toString()] = true);
+  }
+  return _results;
+};
+
+Fun.Set.prototype = {
+  push: function(a) {
+    return this.set[a.toString()] = true;
+  },
+  array: function() {
+    return Object.keys(this.set);
   }
 };
 
