@@ -10,11 +10,11 @@
 },
 {
   "filename": "blue_64px.png",
-  "frame": {"x": 0,"y": 100,"w": 64,"h": 64},
+  "frame": {"x": 0,"y": 100,"w": 32,"h": 32},
   "rotated": false,
   "trimmed": false,
-  "spriteSourceSize": {"x": 0, "y": 0, "w": 100, "h":100},
-  "sourceSize": {"w": 100, "h":100}
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 64, "h":64},
+  "sourceSize": {"w": 64, "h":64}
 },
 {
   "filename": "yellow_64px.png",

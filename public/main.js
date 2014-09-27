@@ -2,13 +2,17 @@ var AI, BLOCK, Blocks, Fun, MARGIN, Mediator, Playground, User, Users, WIDTH, an
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 AI = (function() {
-  function AI(playground) {}
+  function AI(playground) {
+    this.Blocks = playground.AIBlocks;
+  }
 
   AI.prototype.mode = 'defaultMode';
 
   AI.prototype.expertRules = [];
 
   AI.prototype.strategyMode = [];
+
+  AI.prototype.startupBlocks = [1, 2, 3, 6, 7, 8, 9, 11];
 
   AI.prototype.corners = {};
 
@@ -26,7 +30,7 @@ AI = (function() {
     if (i < 0 || i > 20) {
       return null;
     }
-    return SQ.playground.Blocks.getBlock(i);
+    return SQ.playground.AIBlocks.getBlock(i);
   };
 
   AI.prototype.updateState = function() {
@@ -43,22 +47,28 @@ AI = (function() {
   };
 
   AI.prototype.addCorners = function(block, x, y) {
-    var c, pos, userId, _i, _len, _ref;
+    var c, corners, k, pos, userId, v, _i, _len, _ref, _ref1;
     userId = SQ.Users.current().id;
-    _ref = block.corners;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      c = _ref[_i];
+    corners = {};
+    _ref = SQ.playground.corners;
+    for (k in _ref) {
+      v = _ref[k];
+      corners[k] = v;
+    }
+    _ref1 = block.corners;
+    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+      c = _ref1[_i];
       pos = c;
       if (this.withinGrid(pos)) {
-        if (this.corners[pos.toString()]) {
-          this.corners[pos.toString()][userId] = true;
+        if (corners[pos.toString()]) {
+          corners[pos.toString()][userId] = true;
         } else {
-          this.corners[pos.toString()] = {};
-          this.corners[pos.toString()][userId] = true;
+          corners[pos.toString()] = {};
+          corners[pos.toString()][userId] = true;
         }
       }
     }
-    return console.log(this.corners);
+    return Object.keys(corners).length;
   };
 
   AI.prototype.addBorders = function(block, x, y) {
@@ -67,7 +77,7 @@ AI = (function() {
     _ref = block.borders;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       b = _ref[_i];
-      pos = [x + b[0], y + b[1]];
+      pos = b;
       if (this.withinGrid(pos)) {
         if (this.borders[pos.toString()]) {
           this.borders[pos.toString()][userId] = true;
@@ -84,14 +94,9 @@ AI = (function() {
 
   AI.prototype.computeValue = function() {};
 
-  AI.prototype.countCorners = function(block, dot) {
+  AI.prototype.countCorners = function(block, cpos) {
     var len;
-    this.addCorners(block, dot[0], dot[1]);
-    len = Object.keys(this.corners).length;
-    if (dot[0] === 0 && dot[1] === 3) {
-      console.log(this.corners);
-    }
-    this.corners = [];
+    len = this.addCorners(block, cpos);
     return len;
   };
 
@@ -119,8 +124,11 @@ AI = (function() {
     });
   };
 
-  AI.prototype.validFirstMove = function(block) {
+  AI.prototype.validMove = function(block) {
     var flag;
+    if (this.turn > 0) {
+      return true;
+    }
     flag = true;
     block.coord.map(function(d) {
       if (d[0] < 0 || d[1] < 0) {
@@ -132,6 +140,7 @@ AI = (function() {
 
   AI.prototype.makeRotate = function(block, n) {
     var _i, _j, _ref, _results, _results1;
+    n = parseInt(n);
     if (n > 6 || n < 0) {
       throw new Error('rotate wrong n');
     }
@@ -139,89 +148,144 @@ AI = (function() {
       _results = [];
       for (var _i = 0, _ref = Math.min(n, 3); 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
       return _results;
-    }).apply(this).map(function() {
-      return SQ.playground.Blocks.rotateCW(block);
-    });
+    }).apply(this).map((function(_this) {
+      return function() {
+        return _this.Blocks.rotateCW(block);
+      };
+    })(this));
     if (n > 3) {
-      SQ.playground.Blocks.flipH(block);
+      this.Blocks.flipH(block);
     }
     if (n > 4) {
       return (function() {
         _results1 = [];
         for (var _j = 4; 4 <= n ? _j < n : _j > n; 4 <= n ? _j++ : _j--){ _results1.push(_j); }
         return _results1;
-      }).apply(this).map(function() {
-        return SQ.playground.Blocks.rotateCW(block);
-      });
+      }).apply(this).map((function(_this) {
+        return function() {
+          return _this.Blocks.rotateCW(block);
+        };
+      })(this));
     }
   };
 
-  AI.prototype.iterateRotate = function(block) {
+  AI.prototype.moveString = function(cpos, rotateN, dpos, cornerN) {
+    return [cpos.toString(), rotateN, dpos.toString(), cornerN].join(',');
+  };
+
+  AI.prototype.iterateRotate = function(block, cpos) {
     var res;
     res = new SQ.Fun.Set();
+    this.saveInit(block);
     block.cornerDots.map((function(_this) {
       return function(dot) {
         _this.adjustCoord(block, dot);
-        if (_this.validFirstMove(block)) {
-          res.push('0,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
+          res.push(_this.moveString(cpos, '0', dot, _this.countCorners(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
     })(this));
     [1, 2, 3].map((function(_this) {
       return function(i) {
-        SQ.playground.Blocks.rotateCW(block);
+        _this.Blocks.rotateCW(block);
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
-          if (_this.validFirstMove(block)) {
-            res.push(i + ',' + dot.toString() + ',' + _this.countCorners(block, dot));
+          if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
+            res.push(_this.moveString(cpos, i, dot, _this.countCorners(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
       };
     })(this));
-    SQ.playground.Blocks.flipH(block);
+    this.Blocks.flipH(block);
     block.cornerDots.map((function(_this) {
       return function(dot) {
         _this.adjustCoord(block, dot);
-        if (_this.validFirstMove(block)) {
-          res.push('4,' + dot.toString() + ',' + _this.countCorners(block, dot));
+        if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
+          res.push(_this.moveString(cpos, '4', dot, _this.countCorners(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
     })(this));
     [5, 6, 7].map((function(_this) {
       return function(i) {
-        SQ.playground.Blocks.rotateCW(block);
+        _this.Blocks.rotateCW(block);
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
-          if (_this.validFirstMove(block)) {
-            res.push(i + ',' + dot.toString() + ',' + _this.countCorners(block, dot));
+          if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
+            res.push(_this.moveString(cpos, i, dot, _this.countCorners(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
       };
     })(this));
-    return res.array();
+    this.restoreInit(block);
+    console.log(res.toArray());
+    return res.toArray();
+  };
+
+  AI.prototype.copy = function(arr) {
+    var a, res, _i, _len;
+    res = [];
+    for (_i = 0, _len = arr.length; _i < _len; _i++) {
+      a = arr[_i];
+      res.push(a);
+    }
+    return res;
+  };
+
+  AI.prototype.saveInit = function(block) {
+    block._coord = this.copy(block.coord);
+    block._corners = this.copy(block.corners);
+    block._borders = this.copy(block.borders);
+    return block._cornerDots = this.copy(block.cornerDots);
+  };
+
+  AI.prototype.restoreInit = function(block) {
+    block.coord = block._coord;
+    block.corners = block._corners;
+    block.borders = block._borders;
+    block.cornerDots = block._cornerDots;
+    return this.Blocks.updateDots(block);
+  };
+
+  AI.prototype.makeMove = function(move, block) {
+    var data, rotateN, value;
+    data = move.split(',');
+    rotateN = data[2];
+    value = data[5];
+    this.makeRotate(block, rotateN);
+    SQ.Users.finishTurn = true;
+    return SQ.playground.placeN('ai', block.order, [data[0], data[1]]);
+  };
+
+  AI.prototype.pickMove = function(moves) {
+    return moves[0];
+  };
+
+  AI.prototype.pickStartupBlocks = function() {
+    var i, index, rand, _i, _len, _ref;
+    rand = Date.now() % this.startupBlocks.length;
+    _ref = this.startupBlocks;
+    for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+      index = _ref[i];
+      if (i === rand) {
+        this.startupBlocks.splice(i, 1);
+        return this.getBlock(index);
+      }
+    }
   };
 
   AI.prototype.computeFirstMove = function() {
-    var block, move, rand, res;
-    block = null;
-    rand = Date.now() % 8;
-    res = [];
-    [1, 2, 3, 6, 7, 8, 9, 11].map((function(_this) {
-      return function(i, index) {
-        if (index === rand) {
-          return block = _this.getBlock(i);
-        }
-      };
-    })(this));
-    res = this.iterateRotate(block);
+    var block, move, res;
+    block = this.pickStartupBlocks();
+    res = this.iterateRotate(block, [0, 0]);
+    console.log(res);
     res.sort(function(a, b) {
       var m, n;
-      m = parseInt(a.split(',')[3]);
-      n = parseInt(b.split(',')[3]);
+      m = parseInt(a.split(',')[5]);
+      n = parseInt(b.split(',')[5]);
       if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
@@ -234,27 +298,32 @@ AI = (function() {
     return this.makeMove(move, block);
   };
 
-  AI.prototype.makeMove = function(move, block) {
-    var data, rotateN, value;
-    data = move.split(',');
-    rotateN = data[0];
-    value = data[3];
-    this.makeRotate(block, rotateN);
-    return SQ.playground.placeN(block.order, data[1], data[2]);
-  };
-
-  AI.prototype.pickMove = function(moves) {
-    console.log(moves);
-    return moves[0];
-  };
-
   AI.prototype.computeStartupMoves = function() {
-    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((function(_this) {
-      return function(i) {
-        var block;
-        return block = _this.getBlock(i);
-      };
-    })(this));
+    var arr, block, cpos, move, res, _i, _len, _ref;
+    block = this.pickStartupBlocks();
+    res = [];
+    _ref = SQ.playground.getCorners();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      cpos = _ref[_i];
+      arr = this.iterateRotate(block, cpos);
+      res = res.concat(arr);
+    }
+    console.log(res);
+    res.sort(function(a, b) {
+      var m, n;
+      m = parseInt(a.split(',')[5]);
+      n = parseInt(b.split(',')[5]);
+      if (m - n < 0) {
+        return 1;
+      } else if (m - n === 0) {
+        return 0;
+      } else if (m - n > 0) {
+        return -1;
+      }
+    });
+    move = this.pickMove(res);
+    console.log('move:' + block.order + ';' + move.toString());
+    return this.makeMove(move, block);
   };
 
   AI.prototype.computeMoves = function() {};
@@ -275,15 +344,7 @@ AI = (function() {
     } else if (this.turn > 17) {
       this.computeEndingMoves();
     }
-    console.log("I'm done thinking, bitch!");
-    this.makeMove();
-    SQ.playground.step += 1;
-    SQ.playground.turn += 1;
-    return SQ.Users.nextTurn();
-  };
-
-  AI.prototype.makeMove = function() {
-    return console.log("I'm done, bitch!");
+    return console.log("I'm done thinking, bitch!");
   };
 
   return AI;
@@ -299,11 +360,23 @@ Blocks = (function() {
 
   Blocks.prototype._blocks = {};
 
-  function Blocks() {
+  function Blocks(BLOCKS, type, texture) {
     this.rotateACW = __bind(this.rotateACW, this);
     this.rotateCW = __bind(this.rotateCW, this);
     this.flipV = __bind(this.flipV, this);
-    this.Utest();
+    if (type === 'human') {
+      BLOCKS.map((function(_this) {
+        return function(data, index) {
+          return _this.drawHumanBlock(data, index, texture);
+        };
+      })(this));
+    } else if (type === 'ai') {
+      BLOCKS.map((function(_this) {
+        return function(data, index) {
+          return _this.drawAIBlock(data, index, texture);
+        };
+      })(this));
+    }
   }
 
   Blocks.prototype.getBlock = function(n) {
@@ -613,30 +686,9 @@ Blocks = (function() {
     return [gx, gy];
   };
 
-  Blocks.prototype.drawBlock = function(data, index, color) {
-    var block, com, self;
+  Blocks.prototype.setupTouchEvent = function(block) {
+    var self;
     self = this;
-    block = new PIXI.DisplayObjectContainer();
-    block.interactive = true;
-    block.buttonMode = true;
-    block.position.x = Math.floor(index / 7) * 70;
-    block.position.y = (index % 7) * 32 * 3 + 70;
-    block.position.ox = block.position.x;
-    block.position.oy = block.position.y;
-    block.scale = {
-      x: .5,
-      y: .5
-    };
-    block.coord = data;
-    block.order = index;
-    data.map(function(pos, di) {
-      var dot;
-      dot = PIXI.Sprite.fromFrame(color);
-      dot.interactive = true;
-      dot.position.x = pos[0] * WIDTH;
-      dot.position.y = pos[1] * WIDTH;
-      return block.addChild(dot);
-    });
     block.mouseover = function(data) {
       return block.scale = {
         x: 1,
@@ -681,7 +733,7 @@ Blocks = (function() {
         return self.placeBack(block);
       }
     };
-    block.mousemove = block.touchmove = function(data) {
+    return block.mousemove = block.touchmove = function(data) {
       var newPosition;
       if (this.dragging) {
         newPosition = data.getLocalPosition(this.parent.parent.children[0]);
@@ -689,10 +741,60 @@ Blocks = (function() {
         return this.position.y = newPosition.y;
       }
     };
-    com = self.computeCorners(block);
+  };
+
+  Blocks.prototype.computeProp = function(block, data, index) {
+    var com;
+    block.coord = data;
+    block.order = index;
+    com = this.computeCorners(block);
     block.corners = com[0];
     block.borders = com[1];
-    block.cornerDots = com[2];
+    return block.cornerDots = com[2];
+  };
+
+  Blocks.prototype.drawDots = function(block, data, color) {
+    return data.map(function(pos, di) {
+      var dot;
+      dot = PIXI.Sprite.fromFrame(color);
+      dot.interactive = true;
+      dot.position.x = pos[0] * WIDTH;
+      dot.position.y = pos[1] * WIDTH;
+      return block.addChild(dot);
+    });
+  };
+
+  Blocks.prototype.drawAIBlock = function(data, index, color) {
+    var block, self;
+    self = this;
+    block = new PIXI.DisplayObjectContainer();
+    block.type = 'ai';
+    block.interactive = true;
+    block.buttonMode = true;
+    this.drawDots(block, data, color);
+    this.computeProp(block, data, index);
+    self._blocks[index] = block;
+    return block;
+  };
+
+  Blocks.prototype.drawHumanBlock = function(data, index, color) {
+    var block, self;
+    self = this;
+    block = new PIXI.DisplayObjectContainer();
+    block.type = 'human';
+    block.interactive = true;
+    block.buttonMode = true;
+    block.position.x = Math.floor(index / 7) * 70;
+    block.position.y = (index % 7) * 32 * 3 + 70;
+    block.position.ox = block.position.x;
+    block.position.oy = block.position.y;
+    block.scale = {
+      x: .5,
+      y: .5
+    };
+    this.drawDots(block, data, color);
+    this.setupTouchEvent(block);
+    this.computeProp(block, data, index);
     self._blocks[index] = block;
     return block;
   };
@@ -810,7 +912,7 @@ Fun.Set.prototype = {
   push: function(a) {
     return this.set[a.toString()] = true;
   },
-  array: function() {
+  toArray: function() {
     return Object.keys(this.set);
   }
 };
@@ -852,8 +954,10 @@ Playground = (function() {
     this.loadResource((function(_this) {
       return function() {
         _this.initGrid();
-        _this.initBlock(BLOCK, _this.Block_el);
+        _this.initHumanBlock(BLOCK, 0);
         _this.drawBlockPanel(BLOCK);
+        _this.initAIBlock(BLOCK, 1);
+        SQ.AI = new AI(_this);
         _this.UnitTest();
         return requestAnimFrame(animate);
       };
@@ -861,8 +965,6 @@ Playground = (function() {
   }
 
   Playground.prototype.Block_el = {};
-
-  Playground.prototype.Blocks = {};
 
   Playground.prototype.Users = {};
 
@@ -894,6 +996,14 @@ Playground = (function() {
     SQ.board = this.board = new PIXI.DisplayObjectContainer();
     stage.addChild(this.board);
     return document.body.appendChild(renderer.view);
+  };
+
+  Playground.prototype.initHumanBlock = function(blocks, texure) {
+    return this.humanBlocks = new Blocks(blocks, 'human', texure);
+  };
+
+  Playground.prototype.initAIBlock = function(blocks, texure) {
+    return this.AIBlocks = new Blocks(blocks, 'ai', texure);
   };
 
   Playground.prototype.initGameControl = function() {
@@ -1013,7 +1123,7 @@ Playground = (function() {
   };
 
   Playground.prototype.drawBlockPanel = function(blocks) {
-    var blockPanel, self;
+    var blockPanel, k, self, v, _ref;
     self = this;
     SQ.panel = blockPanel = new PIXI.DisplayObjectContainer();
     blockPanel.position.x = 788 - 60;
@@ -1021,13 +1131,11 @@ Playground = (function() {
     blockPanel.width = 32;
     blockPanel.height = 700;
     blockPanel.interactive = true;
-    blocks.map((function(_this) {
-      return function(b, bi) {
-        var block;
-        block = SQ.playground.Blocks.drawBlock(b, bi, 0);
-        return blockPanel.addChild(block);
-      };
-    })(this));
+    _ref = this.humanBlocks._blocks;
+    for (k in _ref) {
+      v = _ref[k];
+      blockPanel.addChild(v);
+    }
     return stage.addChild(blockPanel);
   };
 
@@ -1058,7 +1166,7 @@ Playground = (function() {
     }
   };
 
-  Playground.prototype.addCorners = function(block) {
+  Playground.prototype._addCorners = function(block) {
     var c, pos, userId, _i, _len, _ref;
     userId = SQ.Users.current().id;
     _ref = block.corners;
@@ -1072,15 +1180,87 @@ Playground = (function() {
     return console.log(this.corners);
   };
 
-  Playground.prototype.addBorders = function(block) {
+  Playground.prototype.getCorners = function() {
+    var k, res, userId, v, _ref;
+    res = [];
+    userId = SQ.Users.current().id;
+    _ref = this.corners;
+    for (k in _ref) {
+      v = _ref[k];
+      if (v[userId] === true) {
+        res.push(k.split(',').map(function(n) {
+          return parseInt(n);
+        }));
+      }
+    }
+    return res;
+  };
+
+  Playground.prototype.addCorners = function(block, cpos) {
+    var c, k, pos, userId, v, _corners, _i, _len, _ref, _ref1;
+    userId = SQ.Users.current().id;
+    _ref = block.corners;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      c = _ref[_i];
+      pos = [c[0] + cpos[0], c[1] + cpos[1]];
+      if (this.withinGrid(pos)) {
+        if (this.corners[pos.toString()]) {
+          this.corners[pos.toString()][userId] = true;
+        } else {
+          this.corners[pos.toString()] = {};
+          this.corners[pos.toString()][userId] = true;
+        }
+      }
+    }
+    console.log(this.corners);
+    _corners = {};
+    _ref1 = this.corners;
+    for (k in _ref1) {
+      v = _ref1[k];
+      if (v[userId] === true) {
+        _corners[k] = v;
+      }
+    }
+    console.log(Object.keys(_corners).length);
+    return Object.keys(_corners).length;
+  };
+
+  Playground.prototype.removeCorners = function(block, cpos) {
+    var c, pos, userId, _i, _len, _ref, _results;
+    userId = SQ.Users.current().id;
+    _ref = block.corners;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      c = _ref[_i];
+      pos = [c[0] + cpos[0], c[1] + cpos[1]];
+      if (this.withinGrid(pos)) {
+        if (this.corners[pos.toString()]) {
+          _results.push(this.corners[pos.toString()][userId] = false);
+        } else {
+          this.corners[pos.toString()] = {};
+          _results.push(this.corners[pos.toString()][userId] = false);
+        }
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  Playground.prototype.addBorders = function(block, cpos) {
     var b, pos, userId, _i, _len, _ref;
     userId = SQ.Users.current().id;
     _ref = block.borders;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       b = _ref[_i];
-      pos = [block.gx + b[0], block.gy + b[1]];
+      pos = [b[0] + cpos[0], b[1] + cpos[1]];
       if (this.withinGrid(pos)) {
-        this.borders[pos.toString()] = userId + '.b';
+        if (this.borders[pos.toString()]) {
+          this.borders[pos.toString()][userId] = true;
+        } else {
+          this.borders[pos.toString()] = {};
+          this.borders[pos.toString()][userId] = true;
+        }
       }
     }
     return console.log(this.borders);
@@ -1090,7 +1270,7 @@ Playground = (function() {
     var mark, userId;
     userId = SQ.Users.current().id;
     mark = this.corners[pos.toString()];
-    if (mark && mark.split('.')[0] === userId.toString()) {
+    if (mark && mark[userId] === true) {
       return true;
     } else {
       return false;
@@ -1101,7 +1281,7 @@ Playground = (function() {
     var mark, userId;
     userId = SQ.Users.current().id;
     mark = this.borders[pos.toString()];
-    if (mark && mark.split('.')[0] === userId.toString()) {
+    if (mark && mark[userId] === true) {
       return true;
     } else {
       return false;
@@ -1120,15 +1300,16 @@ Playground = (function() {
         return false;
       }
     }
-    if (this.step === 0) {
+    if (this.turn === 0) {
       validFistStep = false;
       _ref1 = block.coord;
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         pos = _ref1[_j];
         _x = x + pos[0];
         _y = y + pos[1];
-        if (_x === 19 && _y === 19) {
+        if ((_x === 19 && _y === 19) || (_x === 0 && _y === 0)) {
           validFistStep = true;
+          break;
         }
       }
       if (!validFistStep) {
@@ -1149,7 +1330,7 @@ Playground = (function() {
         }
       };
     })(this));
-    if (Object.keys(this.corners).length === 0) {
+    if (this.turn === 0) {
       flag = true;
     }
     block.coord.map((function(_this) {
@@ -1166,9 +1347,17 @@ Playground = (function() {
     return SQ.playground.getStat(x, y) === 1;
   };
 
-  Playground.prototype.placeN = function(n, x, y) {
-    var block;
-    block = this.Blocks.getBlock(n);
+  Playground.prototype.placeN = function(type, index, pos) {
+    var block, x, y;
+    x = parseInt(pos[0]);
+    y = parseInt(pos[1]);
+    if (type === 'ai') {
+      block = this.AIBlocks.getBlock(index);
+    } else if (type === 'human') {
+      block = this.humanBlocks.getBlock(index);
+    } else {
+      throw 'placeN type error';
+    }
     if (block === null) {
       return;
     }
@@ -1183,6 +1372,7 @@ Playground = (function() {
     }
     if (this.placable(block, x, y)) {
       this.place(block, x, y, true);
+      this.finishPlace(block);
     } else {
       this.placeBack(block);
     }
@@ -1208,15 +1398,17 @@ Playground = (function() {
         return _this.setOccupied(block.gx + rp[0], block.gy + rp[1], 1);
       };
     })(this));
-    this.addCorners(block);
-    this.addBorders(block);
-    this.removeControlPanel(block);
-    this.removeEvent(block);
+    this.addCorners(block, [block.gx, block.gy]);
+    this.addBorders(block, [block.gx, block.gy]);
+    if (block.type === 'human') {
+      this.removeControlPanel(block);
+      this.removeEvent(block);
+    }
     this.udpateInfoBoard();
     this.step += 1;
-    if (SQ.Users.turnFinished) {
+    if (SQ.Users.finishTurn) {
       this.turn += 1;
-      SQ.Users.turnFinished = false;
+      SQ.Users.finishTurn = false;
     }
     return SQ.Users.nextTurn();
   };
@@ -1281,10 +1473,6 @@ Playground = (function() {
       });
       return $('.info-board').append($('<p>' + stat.toString() + '</p>'));
     });
-  };
-
-  Playground.prototype.initBlock = function(blocks, texure) {
-    return this.Blocks = new Blocks(blocks, this.next, this.Users, this);
   };
 
   Playground.prototype.next = function() {
@@ -1389,6 +1577,7 @@ Users = (function() {
   };
 
   Users.prototype.nextTurn = function() {
+    console.log('in nextTurn, step: ' + SQ.playground.step);
     this.nextUser();
     SQ.Mediator.publish('nextOne', this.current());
     return this.setUserUI();
@@ -1432,8 +1621,7 @@ User = (function() {
   User.prototype.think = function() {
     if (this.type === 'ai' && this.parent.userIndex === this.id) {
       SQ.AI.updateState();
-      SQ.AI.compute();
-      return SQ.Users.finishTurn = true;
+      return SQ.AI.compute();
     }
   };
 

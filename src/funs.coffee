@@ -10,5 +10,5 @@ Fun.Set.prototype =
   push: (a) ->
     this.set[a.toString()] = true
 
-  array: () ->
+  toArray: () ->
     Object.keys(this.set)

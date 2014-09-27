@@ -17,6 +17,7 @@ class Users
     @userIndex = SQ.playground.step % @_users.length
 
   nextTurn: () ->
+    console.log 'in nextTurn, step: ' + SQ.playground.step
     @nextUser()
     SQ.Mediator.publish 'nextOne', @current()
     @setUserUI()
@@ -47,7 +48,6 @@ class User
     if @type is 'ai' and @parent.userIndex is @id
       SQ.AI.updateState()
       SQ.AI.compute()
-      SQ.Users.finishTurn = true
     # wait confirm if it's human
 
   isHuman: () ->

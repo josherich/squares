@@ -7,8 +7,15 @@ class Blocks
   _playground: {}
   _blocks: {} # buffer for pixi obj
 
-  constructor: () ->
-    @Utest()
+  constructor: (BLOCKS, type, texture) ->
+    if type is 'human'
+      BLOCKS.map (data, index) =>
+        @drawHumanBlock data, index, texture
+    else if type is 'ai'
+      BLOCKS.map (data, index) =>
+        @drawAIBlock data, index, texture
+
+    # @Utest()
 
   getBlock: (n) ->
     return null if n > 20 or n < 0
@@ -221,26 +228,8 @@ class Blocks
     gy = Math.max(0, Math.round((block.position.y - MARGIN) / WIDTH))
     return [gx, gy]
 
-  drawBlock: (data, index, color) ->
+  setupTouchEvent: (block) ->
     self = this
-    block = new PIXI.DisplayObjectContainer()
-    block.interactive = true
-    block.buttonMode = true
-    block.position.x = Math.floor(index / 7) * 70
-    block.position.y = (index % 7) * 32 * 3 + 70
-    block.position.ox = block.position.x
-    block.position.oy = block.position.y
-    block.scale = {x:.5, y:.5}
-    block.coord = data
-    block.order = index
-
-    data.map (pos, di) ->
-      dot = PIXI.Sprite.fromFrame(color)
-      dot.interactive = true
-      dot.position.x = pos[0] * WIDTH
-      dot.position.y = pos[1] * WIDTH
-      block.addChild(dot)
-
     block.mouseover = (data) ->
       block.scale = {x:1, y:1}
 
@@ -277,10 +266,57 @@ class Blocks
         this.position.x = newPosition.x
         this.position.y = newPosition.y
 
-    com = self.computeCorners(block)
+  computeProp: (block, data, index) ->
+    block.coord = data
+    block.order = index
+
+    com = @computeCorners(block)
     block.corners = com[0]
     block.borders = com[1]
     block.cornerDots = com[2]
+
+
+  drawDots: (block, data, color) ->
+    data.map (pos, di) ->
+      dot = PIXI.Sprite.fromFrame(color)
+      dot.interactive = true
+      dot.position.x = pos[0] * WIDTH
+      dot.position.y = pos[1] * WIDTH
+      block.addChild(dot)
+
+
+  drawAIBlock: (data, index, color) ->
+    self = this
+    block = new PIXI.DisplayObjectContainer()
+    block.type = 'ai'
+    block.interactive = true
+    block.buttonMode = true
+
+    @drawDots(block, data, color)
+
+    @computeProp(block, data, index)
+
+    self._blocks[index] = block
+    return block
+
+
+  drawHumanBlock: (data, index, color) ->
+    self = this
+    block = new PIXI.DisplayObjectContainer()
+    block.type = 'human'
+    block.interactive = true
+    block.buttonMode = true
+    block.position.x = Math.floor(index / 7) * 70
+    block.position.y = (index % 7) * 32 * 3 + 70
+    block.position.ox = block.position.x
+    block.position.oy = block.position.y
+    block.scale = {x:.5, y:.5}
+
+    @drawDots(block, data, color)
+
+    @setupTouchEvent(block)
+
+    @computeProp(block, data, index)
 
     self._blocks[index] = block
     return block

@@ -44,14 +44,18 @@ class Playground
     # @initFBSync()
     @loadResource () =>
       @initGrid()
-      @initBlock BLOCK, @Block_el
+
+      @initHumanBlock BLOCK, 0
+
       @drawBlockPanel(BLOCK)
-      # @initUserUI()
+      @initAIBlock BLOCK, 1
+
+      SQ.AI = new AI(this)
+
       @UnitTest()
       requestAnimFrame(animate)
 
   Block_el: {}
-  Blocks: {}
   Users: {}
 
   # corners and borders(borders - corners) of current blocks
@@ -83,6 +87,12 @@ class Playground
     SQ.board = @board = new PIXI.DisplayObjectContainer()
     stage.addChild(@board)
     document.body.appendChild(renderer.view)
+
+  initHumanBlock: (blocks, texure) ->
+    @humanBlocks = new Blocks blocks, 'human', texure
+
+  initAIBlock: (blocks, texure) ->
+    @AIBlocks = new Blocks blocks, 'ai', texure
 
   initGameControl: () ->
     self = this
@@ -186,14 +196,9 @@ class Playground
     blockPanel.width = 32
     blockPanel.height = 700
     blockPanel.interactive = true
-    # blockPanel.hitArea = new PIXI.Rectangle(788-60, 10, 32, 700)
 
-    # blockPanel.mouseover = blockPanel.mousedown = blockPanel.touchstart = (data) ->
-    #   console.log data
-
-    blocks.map (b, bi) =>
-      block = SQ.playground.Blocks.drawBlock(b, bi, 0)
-      blockPanel.addChild(block)
+    for k, v of @humanBlocks._blocks
+      blockPanel.addChild(v)
 
     stage.addChild(blockPanel)
 
@@ -215,7 +220,7 @@ class Playground
     else
       return false
 
-  addCorners: (block) ->
+  _addCorners: (block) ->
     userId = SQ.Users.current().id
     for c in block.corners
       pos = [block.gx + c[0], block.gy + c[1]]
@@ -224,19 +229,71 @@ class Playground
         # @Grid[block.gy + c[1]][block.gx + c[0]][2] = userId + '.c';
     console.log(@corners)
 
-  addBorders: (block) ->
+  # get array of corners of current user
+  getCorners: () ->
+    res = []
+    userId = SQ.Users.current().id
+
+    for k, v of @corners
+      if v[userId] is true
+        res.push k.split(',').map (n) ->
+          return parseInt n
+
+    return res
+
+  # add corners and return corner count of current user
+  addCorners: (block, cpos) ->
+    userId = SQ.Users.current().id
+
+    for c in block.corners
+      # corners coord has been adjusted
+      pos = [c[0] + cpos[0], c[1] + cpos[1]]
+      if @withinGrid(pos)
+        if @corners[pos.toString()]
+          @corners[pos.toString()][userId] = true
+        else
+          @corners[pos.toString()] = {}
+          @corners[pos.toString()][userId] = true
+
+    console.log @corners
+
+    _corners = {}
+    for k, v of @corners
+      if v[userId] is true
+        _corners[k] = v
+
+    console.log Object.keys(_corners).length
+    Object.keys(_corners).length
+
+  removeCorners: (block, cpos) ->
+    userId = SQ.Users.current().id
+    for c in block.corners
+      # corners coord has been adjusted
+      pos = [c[0] + cpos[0], c[1] + cpos[1]]
+      if @withinGrid(pos)
+        if @corners[pos.toString()]
+          @corners[pos.toString()][userId] = false
+        else
+          @corners[pos.toString()] = {}
+          @corners[pos.toString()][userId] = false
+
+  addBorders: (block, cpos) ->
     userId = SQ.Users.current().id
     for b in block.borders
-      pos = [block.gx + b[0], block.gy + b[1]]
+      pos = [b[0] + cpos[0], b[1] + cpos[1]]
       if @withinGrid(pos)
-        @borders[pos.toString()] = userId + '.b'
-        # @Grid[block.gy + b[1]][block.gx + b[0]][2] = userId + '.b';
+        if @borders[pos.toString()]
+          @borders[pos.toString()][userId] = true
+        else
+          @borders[pos.toString()] = {}
+          @borders[pos.toString()][userId] = true
+
     console.log(@borders)
 
   isOnCorners: (pos) ->
     userId = SQ.Users.current().id
     mark = @corners[pos.toString()]
-    if mark and mark.split('.')[0] is userId.toString()
+    if mark and mark[userId] is true
       return true
     else
       return false
@@ -244,7 +301,7 @@ class Playground
   isOnBorders: (pos) ->
     userId = SQ.Users.current().id
     mark = @borders[pos.toString()]
-    if mark and mark.split('.')[0] is userId.toString()
+    if mark and mark[userId] is true
       return true
     else
       return false
@@ -262,12 +319,14 @@ class Playground
         return false
 
     # test first step should be at the corner
-    if @step is 0
+    if @turn is 0
       validFistStep = false
       for pos in block.coord
         _x = x + pos[0]
         _y = y + pos[1]
-        validFistStep = true if _x is 19 and _y is 19
+        if (_x is 19 and _y is 19) or (_x is 0 and _y is 0)
+          validFistStep = true
+          break
       return unless validFistStep
 
     # at least one block in current corners
@@ -278,8 +337,8 @@ class Playground
     block.coord.map (pos) =>
       flag = false if @isOnBorders([x + pos[0], y + pos[1]])
 
-    # first block
-    flag = true if Object.keys(@corners).length is 0
+    # first turn
+    flag = true if @turn is 0
 
     # should be empty
     block.coord.map (rp) =>
@@ -290,9 +349,18 @@ class Playground
   occupied: (x, y) ->
     SQ.playground.getStat(x, y) is 1
 
-  placeN: (n, x, y) =>
-    block = @Blocks.getBlock(n)
+  placeN: (type, index, pos) =>
+    x = parseInt pos[0]
+    y = parseInt pos[1]
+    if type is 'ai'
+      block = @AIBlocks.getBlock(index)
+    else if type is 'human'
+      block = @humanBlocks.getBlock(index)
+    else
+      throw 'placeN type error'
+
     return if block is null
+
     block.scale = {x:1, y:1}
     if block.put
       @unplace(block)
@@ -301,6 +369,7 @@ class Playground
 
     if @placable(block, x, y)
       @place(block, x, y, true)
+      @finishPlace(block)
     else
       @placeBack(block)
     @udpateInfoBoard()
@@ -325,20 +394,21 @@ class Playground
     block.coord.map (rp) =>
       @setOccupied(block.gx + rp[0], block.gy + rp[1], 1)
 
-    @addCorners(block)
-    @addBorders(block)
+    @addCorners(block, [block.gx, block.gy])
+    @addBorders(block, [block.gx, block.gy])
 
-    @removeControlPanel(block)
-    @removeEvent(block)
+    if block.type is 'human'
+      @removeControlPanel(block)
+      @removeEvent(block)
 
     @udpateInfoBoard()
     # unless fromSync
     #   @pushPlace(block, x, y)
 
     @step += 1
-    if SQ.Users.turnFinished
+    if SQ.Users.finishTurn
       @turn += 1
-      SQ.Users.turnFinished = false
+      SQ.Users.finishTurn = false
 
     SQ.Users.nextTurn()
 
@@ -391,12 +461,6 @@ class Playground
       stat = e.map (_e) ->
         return _e[2]
       $('.info-board').append($('<p>' + stat.toString() + '</p>'))
-
-  initBlock: (blocks, texure) ->
-    @Blocks = new Blocks blocks, @next, @Users, this
-
-    # @currentUser = @Users.nextUser()
-    # @setUserUI()
 
   next: =>
     if @Blocks.hasBlockLeft()
