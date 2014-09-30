@@ -139,10 +139,10 @@ class Playground
     if step.player != @currentPlayer.id
       @placeN(step.blockOrder, pos[0], pos[1])
 
-  getCoord: (ix, iy) ->
+  getCoord: (pos) ->
     margin = 74
     width = 32
-    return [margin + ix * width, margin + iy * width]
+    return [margin + pos[0] * width, margin + pos[1] * width]
 
   initGrid: () ->
     self = this
@@ -173,7 +173,7 @@ class Playground
       for i in [0..19]
         gy = []
         for j in [0..19]
-          gy.push self.getCoord(i, j).concat([0, null]);
+          gy.push self.getCoord([i, j]).concat([0, null]);
         self.Grid.push gy
 
       self.Grid.map (i) ->
@@ -212,7 +212,14 @@ class Playground
         return b[2]
 
   setOccupied: (x, y, state) =>
-    @Grid[y][x][2] = state
+    if @Grid[y][x][2] == 1
+      return
+    if state == 1
+      @Grid[y][x][2] = state
+      return
+
+    @Grid[y][x][2] = @Grid[y][x][2] || []
+    @Grid[y][x][2].push state
 
   withinGrid: (pos) ->
     if pos[0] > -1 and pos[0] < 20 and pos[1] > -1 and pos[1] < 20
@@ -249,28 +256,30 @@ class Playground
       # corners coord has been adjusted
       pos = [c[0] + cpos[0], c[1] + cpos[1]]
       if @withinGrid(pos)
+        @setOccupied(pos[0], pos[1], userId + '.c')
         if @corners[pos.toString()]
           @corners[pos.toString()][userId] = true
         else
           @corners[pos.toString()] = {}
           @corners[pos.toString()][userId] = true
 
-    console.log @corners
+    # console.log @corners
 
     _corners = {}
     for k, v of @corners
       if v[userId] is true
         _corners[k] = v
 
-    console.log Object.keys(_corners).length
     Object.keys(_corners).length
 
   removeCorners: (block, cpos) ->
     userId = SQ.Users.current().id
+
     for c in block.corners
       # corners coord has been adjusted
       pos = [c[0] + cpos[0], c[1] + cpos[1]]
       if @withinGrid(pos)
+        @setOccupied(pos[0], pos[1], userId + '.c')
         if @corners[pos.toString()]
           @corners[pos.toString()][userId] = false
         else
@@ -282,6 +291,7 @@ class Playground
     for b in block.borders
       pos = [b[0] + cpos[0], b[1] + cpos[1]]
       if @withinGrid(pos)
+        @setOccupied(pos[0], pos[1], userId + '.b')
         if @borders[pos.toString()]
           @borders[pos.toString()][userId] = true
         else
@@ -310,13 +320,15 @@ class Playground
   placable: (block, x, y) =>
     flag = false
     # flag = false unless @corners[[x, y].toString()]
-
+    console.log '=== placable start ==='
     # inside grid
     for pos in block.coord
       _x = x + pos[0]
       _y = y + pos[1]
       if _x > 19 or x < 0 or _y > 19 or _y < 0
+        console.log 'fail - out of grid bound'
         return false
+
 
     # test first step should be at the corner
     if @turn is 0
@@ -325,24 +337,33 @@ class Playground
         _x = x + pos[0]
         _y = y + pos[1]
         if (_x is 19 and _y is 19) or (_x is 0 and _y is 0)
+          console.log 'pass - valid first step'
           validFistStep = true
           break
       return unless validFistStep
 
     # at least one block in current corners
     block.coord.map (pos) =>
-      flag = true if @isOnCorners([x + pos[0], y + pos[1]])
+      if @isOnCorners([x + pos[0], y + pos[1]])
+        console.log 'pass - at least 1 corner hit'
+        flag = true
 
     # none in border blocks.
     block.coord.map (pos) =>
-      flag = false if @isOnBorders([x + pos[0], y + pos[1]])
+      if @isOnBorders([x + pos[0], y + pos[1]])
+        console.log 'fail - border taken'
+        flag = false
 
     # first turn
     flag = true if @turn is 0
 
     # should be empty
     block.coord.map (rp) =>
-      flag = false if @occupied(x + rp[0], y + rp[1])
+      if @occupied(x + rp[0], y + rp[1])
+        console.log 'fail - grid taken'
+        flag = false
+
+    console.log '=== placable end ==='
     return flag
 
   # occupied by either user
@@ -375,18 +396,18 @@ class Playground
     @udpateInfoBoard()
 
 
-  place: (block, x, y, fromSync) =>
+  place: (block, coord, fromSync) =>
     # ix = Math.floor((x - 74) / 32)
     # iy = Math.floor((y - 74) / 32)
     block.put = true
-    pos = @getCoord(x, y)
+    pos = @getCoord(coord)
 
     block.position =
       x: pos[0] - WIDTH / 2
       y: pos[1] - WIDTH / 2
 
-    block.gx = x
-    block.gy = y
+    block.gx = coord[0]
+    block.gy = coord[1]
 
   finishPlace: (block, fromSync) =>
     block.finish = true
@@ -460,7 +481,10 @@ class Playground
     @Grid.map (e) ->
       stat = e.map (_e) ->
         return _e[2]
-      $('.info-board').append($('<p>' + stat.toString() + '</p>'))
+      html = ''
+      stat.map (e) ->
+        html += '<div class="dd">' + e + '</div>'
+      $('.info-board').append('<div class="row">' + html + '</div>')
 
   next: =>
     if @Blocks.hasBlockLeft()

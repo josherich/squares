@@ -11,4 +11,12 @@ Fun.Set.prototype =
     this.set[a.toString()] = true
 
   toArray: () ->
-    Object.keys(this.set)
+    Object.keys(this.set).map (str) ->
+      return str.split(',').map (e) ->
+        return parseInt e
+
+Fun.copy = (obj) ->
+  res = {}
+  for k, v of obj
+    res[k] = v
+  res

@@ -46,31 +46,6 @@ AI = (function() {
     }
   };
 
-  AI.prototype.addCorners = function(block, x, y) {
-    var c, corners, k, pos, userId, v, _i, _len, _ref, _ref1;
-    userId = SQ.Users.current().id;
-    corners = {};
-    _ref = SQ.playground.corners;
-    for (k in _ref) {
-      v = _ref[k];
-      corners[k] = v;
-    }
-    _ref1 = block.corners;
-    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-      c = _ref1[_i];
-      pos = c;
-      if (this.withinGrid(pos)) {
-        if (corners[pos.toString()]) {
-          corners[pos.toString()][userId] = true;
-        } else {
-          corners[pos.toString()] = {};
-          corners[pos.toString()][userId] = true;
-        }
-      }
-    }
-    return Object.keys(corners).length;
-  };
-
   AI.prototype.addBorders = function(block, x, y) {
     var b, pos, userId, _i, _len, _ref;
     userId = SQ.Users.current().id;
@@ -92,12 +67,42 @@ AI = (function() {
 
   AI.prototype.computeState = function() {};
 
-  AI.prototype.computeValue = function() {};
+  AI.prototype.computeValue = function(block, cpos) {
+    var len;
+    len = this.countCorners(block, cpos);
+    return len;
+  };
 
   AI.prototype.countCorners = function(block, cpos) {
-    var len;
-    len = this.addCorners(block, cpos);
-    return len;
+    var c, corners, k, neg, pos, userId, v, _corners, _i, _len, _ref;
+    userId = SQ.Users.current().id;
+    neg = 0;
+    corners = SQ.Fun.copy(SQ.playground.corners);
+    _ref = block.corners;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      c = _ref[_i];
+      pos = [c[0] + cpos[0], c[1] + cpos[1]];
+      if (this.withinGrid(pos)) {
+        if (corners[pos.toString()]) {
+          if (corners[pos.toString()][userId]) {
+            neg += 1;
+          } else {
+            corners[pos.toString()][userId] = true;
+          }
+        } else {
+          corners[pos.toString()] = {};
+          corners[pos.toString()][userId] = true;
+        }
+      }
+    }
+    _corners = {};
+    for (k in corners) {
+      v = corners[k];
+      if (v[userId] === true) {
+        _corners[k] = v;
+      }
+    }
+    return Object.keys(_corners).length - neg;
   };
 
   AI.prototype.adjustCoord = function(block, dot) {
@@ -141,18 +146,23 @@ AI = (function() {
   AI.prototype.makeRotate = function(block, n) {
     var _i, _j, _ref, _results, _results1;
     n = parseInt(n);
-    if (n > 6 || n < 0) {
+    if (n > 7 || n < 0) {
       throw new Error('rotate wrong n');
     }
-    (function() {
-      _results = [];
-      for (var _i = 0, _ref = Math.min(n, 3); 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
-      return _results;
-    }).apply(this).map((function(_this) {
-      return function() {
-        return _this.Blocks.rotateCW(block);
-      };
-    })(this));
+    if (n === 0) {
+      return;
+    }
+    if (n > 0) {
+      (function() {
+        _results = [];
+        for (var _i = 0, _ref = Math.min(n, 3); 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
+        return _results;
+      }).apply(this).map((function(_this) {
+        return function() {
+          return _this.Blocks.rotateCW(block);
+        };
+      })(this));
+    }
     if (n > 3) {
       this.Blocks.flipH(block);
     }
@@ -181,7 +191,7 @@ AI = (function() {
       return function(dot) {
         _this.adjustCoord(block, dot);
         if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-          res.push(_this.moveString(cpos, '0', dot, _this.countCorners(block, cpos)));
+          res.push(_this.moveString(cpos, '0', dot, _this.computeValue(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
@@ -192,7 +202,7 @@ AI = (function() {
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
           if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-            res.push(_this.moveString(cpos, i, dot, _this.countCorners(block, cpos)));
+            res.push(_this.moveString(cpos, i, dot, _this.computeValue(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
@@ -203,7 +213,7 @@ AI = (function() {
       return function(dot) {
         _this.adjustCoord(block, dot);
         if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-          res.push(_this.moveString(cpos, '4', dot, _this.countCorners(block, cpos)));
+          res.push(_this.moveString(cpos, '4', dot, _this.computeValue(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
@@ -214,7 +224,7 @@ AI = (function() {
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
           if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-            res.push(_this.moveString(cpos, i, dot, _this.countCorners(block, cpos)));
+            res.push(_this.moveString(cpos, i, dot, _this.computeValue(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
@@ -251,13 +261,12 @@ AI = (function() {
   };
 
   AI.prototype.makeMove = function(move, block) {
-    var data, rotateN, value;
-    data = move.split(',');
-    rotateN = data[2];
-    value = data[5];
+    var rotateN, value;
+    rotateN = move[2];
+    value = move[5];
     this.makeRotate(block, rotateN);
     SQ.Users.finishTurn = true;
-    return SQ.playground.placeN('ai', block.order, [data[0], data[1]]);
+    return SQ.playground.placeN('ai', block.order, [move[0], move[1]]);
   };
 
   AI.prototype.pickMove = function(moves) {
@@ -284,8 +293,8 @@ AI = (function() {
     console.log(res);
     res.sort(function(a, b) {
       var m, n;
-      m = parseInt(a.split(',')[5]);
-      n = parseInt(b.split(',')[5]);
+      m = parseInt(a[5]);
+      n = parseInt(b[5]);
       if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
@@ -301,18 +310,20 @@ AI = (function() {
   AI.prototype.computeStartupMoves = function() {
     var arr, block, cpos, move, res, _i, _len, _ref;
     block = this.pickStartupBlocks();
-    res = [];
+    res = new SQ.Fun.Set();
     _ref = SQ.playground.getCorners();
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       cpos = _ref[_i];
       arr = this.iterateRotate(block, cpos);
-      res = res.concat(arr);
+      arr.map(function(e) {
+        return res.push(e);
+      });
     }
-    console.log(res);
+    res = res.toArray();
     res.sort(function(a, b) {
       var m, n;
-      m = parseInt(a.split(',')[5]);
-      n = parseInt(b.split(',')[5]);
+      m = parseInt(a[5]);
+      n = parseInt(b[5]);
       if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
@@ -321,8 +332,9 @@ AI = (function() {
         return -1;
       }
     });
+    console.log(res);
     move = this.pickMove(res);
-    console.log('move:' + block.order + ';' + move.toString());
+    console.log('move: block-' + block.order + '; corner(' + move[0] + ',' + move[1] + '); with rotate: ' + move[2] + '; center dot: (' + move[3] + ',' + move[4] + '); with value: ' + move[5]);
     return this.makeMove(move, block);
   };
 
@@ -503,7 +515,7 @@ Blocks = (function() {
       return;
     }
     this[type](block);
-    return this.place(block, block.gx, block.gy);
+    return this.place(block, [block.gx, block.gy]);
   };
 
   Blocks.prototype.updateDots = function(block) {
@@ -525,7 +537,7 @@ Blocks = (function() {
     dotArray = [];
     corners = [];
     borders = [];
-    cornerDots = [];
+    cornerDots = new SQ.Fun.Set();
     tempMap = {};
     block.coord.map(function(pos) {
       return tempMap[pos.toString()] = 1;
@@ -593,7 +605,7 @@ Blocks = (function() {
       });
       return flag;
     });
-    return [corners, borders, cornerDots];
+    return [corners, borders, cornerDots.toArray()];
   };
 
   Blocks.prototype.getCorners = function(block) {};
@@ -606,8 +618,8 @@ Blocks = (function() {
     return SQ.playground.placable(block, x, y);
   };
 
-  Blocks.prototype.place = function(block, x, y) {
-    SQ.playground.place(block, x, y);
+  Blocks.prototype.place = function(block, coord) {
+    SQ.playground.place(block, coord);
     if (SQ.Users.current().isHuman()) {
       return this.addControlPanel(block);
     }
@@ -728,7 +740,7 @@ Blocks = (function() {
       };
       gxy = self.getPos(block);
       if (self.placable(block, gxy[0], gxy[1])) {
-        return self.place(block, gxy[0], gxy[1]);
+        return self.place(block, gxy);
       } else {
         return self.placeBack(block);
       }
@@ -913,8 +925,22 @@ Fun.Set.prototype = {
     return this.set[a.toString()] = true;
   },
   toArray: function() {
-    return Object.keys(this.set);
+    return Object.keys(this.set).map(function(str) {
+      return str.split(',').map(function(e) {
+        return parseInt(e);
+      });
+    });
   }
+};
+
+Fun.copy = function(obj) {
+  var k, res, v;
+  res = {};
+  for (k in obj) {
+    v = obj[k];
+    res[k] = v;
+  }
+  return res;
 };
 
 assert = function(test, name) {
@@ -1070,11 +1096,11 @@ Playground = (function() {
     }
   };
 
-  Playground.prototype.getCoord = function(ix, iy) {
+  Playground.prototype.getCoord = function(pos) {
     var margin, width;
     margin = 74;
     width = 32;
-    return [margin + ix * width, margin + iy * width];
+    return [margin + pos[0] * width, margin + pos[1] * width];
   };
 
   Playground.prototype.initGrid = function() {
@@ -1103,7 +1129,7 @@ Playground = (function() {
       for (i = _i = 0; _i <= 19; i = ++_i) {
         gy = [];
         for (j = _j = 0; _j <= 19; j = ++_j) {
-          gy.push(self.getCoord(i, j).concat([0, null]));
+          gy.push(self.getCoord([i, j]).concat([0, null]));
         }
         self.Grid.push(gy);
       }
@@ -1155,7 +1181,15 @@ Playground = (function() {
   };
 
   Playground.prototype.setOccupied = function(x, y, state) {
-    return this.Grid[y][x][2] = state;
+    if (this.Grid[y][x][2] === 1) {
+      return;
+    }
+    if (state === 1) {
+      this.Grid[y][x][2] = state;
+      return;
+    }
+    this.Grid[y][x][2] = this.Grid[y][x][2] || [];
+    return this.Grid[y][x][2].push(state);
   };
 
   Playground.prototype.withinGrid = function(pos) {
@@ -1204,6 +1238,7 @@ Playground = (function() {
       c = _ref[_i];
       pos = [c[0] + cpos[0], c[1] + cpos[1]];
       if (this.withinGrid(pos)) {
+        this.setOccupied(pos[0], pos[1], userId + '.c');
         if (this.corners[pos.toString()]) {
           this.corners[pos.toString()][userId] = true;
         } else {
@@ -1212,7 +1247,6 @@ Playground = (function() {
         }
       }
     }
-    console.log(this.corners);
     _corners = {};
     _ref1 = this.corners;
     for (k in _ref1) {
@@ -1221,7 +1255,6 @@ Playground = (function() {
         _corners[k] = v;
       }
     }
-    console.log(Object.keys(_corners).length);
     return Object.keys(_corners).length;
   };
 
@@ -1234,6 +1267,7 @@ Playground = (function() {
       c = _ref[_i];
       pos = [c[0] + cpos[0], c[1] + cpos[1]];
       if (this.withinGrid(pos)) {
+        this.setOccupied(pos[0], pos[1], userId + '.c');
         if (this.corners[pos.toString()]) {
           _results.push(this.corners[pos.toString()][userId] = false);
         } else {
@@ -1255,6 +1289,7 @@ Playground = (function() {
       b = _ref[_i];
       pos = [b[0] + cpos[0], b[1] + cpos[1]];
       if (this.withinGrid(pos)) {
+        this.setOccupied(pos[0], pos[1], userId + '.b');
         if (this.borders[pos.toString()]) {
           this.borders[pos.toString()][userId] = true;
         } else {
@@ -1291,12 +1326,14 @@ Playground = (function() {
   Playground.prototype.placable = function(block, x, y) {
     var flag, pos, validFistStep, _i, _j, _len, _len1, _ref, _ref1, _x, _y;
     flag = false;
+    console.log('=== placable start ===');
     _ref = block.coord;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       pos = _ref[_i];
       _x = x + pos[0];
       _y = y + pos[1];
       if (_x > 19 || x < 0 || _y > 19 || _y < 0) {
+        console.log('fail - out of grid bound');
         return false;
       }
     }
@@ -1308,6 +1345,7 @@ Playground = (function() {
         _x = x + pos[0];
         _y = y + pos[1];
         if ((_x === 19 && _y === 19) || (_x === 0 && _y === 0)) {
+          console.log('pass - valid first step');
           validFistStep = true;
           break;
         }
@@ -1319,6 +1357,7 @@ Playground = (function() {
     block.coord.map((function(_this) {
       return function(pos) {
         if (_this.isOnCorners([x + pos[0], y + pos[1]])) {
+          console.log('pass - at least 1 corner hit');
           return flag = true;
         }
       };
@@ -1326,6 +1365,7 @@ Playground = (function() {
     block.coord.map((function(_this) {
       return function(pos) {
         if (_this.isOnBorders([x + pos[0], y + pos[1]])) {
+          console.log('fail - border taken');
           return flag = false;
         }
       };
@@ -1336,10 +1376,12 @@ Playground = (function() {
     block.coord.map((function(_this) {
       return function(rp) {
         if (_this.occupied(x + rp[0], y + rp[1])) {
+          console.log('fail - grid taken');
           return flag = false;
         }
       };
     })(this));
+    console.log('=== placable end ===');
     return flag;
   };
 
@@ -1379,16 +1421,16 @@ Playground = (function() {
     return this.udpateInfoBoard();
   };
 
-  Playground.prototype.place = function(block, x, y, fromSync) {
+  Playground.prototype.place = function(block, coord, fromSync) {
     var pos;
     block.put = true;
-    pos = this.getCoord(x, y);
+    pos = this.getCoord(coord);
     block.position = {
       x: pos[0] - WIDTH / 2,
       y: pos[1] - WIDTH / 2
     };
-    block.gx = x;
-    return block.gy = y;
+    block.gx = coord[0];
+    return block.gy = coord[1];
   };
 
   Playground.prototype.finishPlace = function(block, fromSync) {
@@ -1467,11 +1509,15 @@ Playground = (function() {
   Playground.prototype.udpateInfoBoard = function() {
     $('.info-board').html("");
     return this.Grid.map(function(e) {
-      var stat;
+      var html, stat;
       stat = e.map(function(_e) {
         return _e[2];
       });
-      return $('.info-board').append($('<p>' + stat.toString() + '</p>'));
+      html = '';
+      stat.map(function(e) {
+        return html += '<div class="dd">' + e + '</div>';
+      });
+      return $('.info-board').append('<div class="row">' + html + '</div>');
     });
   };
 

@@ -37,22 +37,22 @@ class AI
     else
       return false
 
-  addCorners: (block, x, y) ->
-    userId = SQ.Users.current().id
-    corners = {}
-    for k,v of SQ.playground.corners
-      corners[k] = v
+  # addCorners: (block, x, y) ->
+  #   userId = SQ.Users.current().id
+  #   corners = {}
+  #   for k,v of SQ.playground.corners
+  #     corners[k] = v
 
-    for c in block.corners
-      # corners coord has been adjusted
-      pos = c
-      if @withinGrid(pos)
-        if corners[pos.toString()]
-          corners[pos.toString()][userId] = true
-        else
-          corners[pos.toString()] = {}
-          corners[pos.toString()][userId] = true
-    Object.keys(corners).length
+  #   for c in block.corners
+  #     # corners coord has been adjusted
+  #     pos = c
+  #     if @withinGrid(pos)
+  #       if corners[pos.toString()]
+  #         corners[pos.toString()][userId] = true
+  #       else
+  #         corners[pos.toString()] = {}
+  #         corners[pos.toString()][userId] = true
+  #   Object.keys(corners).length
 
   addBorders: (block, x, y) ->
     userId = SQ.Users.current().id
@@ -69,13 +69,40 @@ class AI
 
   computeState: ->
 
-  computeValue: ->
+  computeValue: (block, cpos) ->
+    len = @countCorners(block, cpos)
 
-  countCorners: (block, cpos) ->
-    len = @addCorners(block, cpos)
+    # len = SQ.playground.addCorners(block, cpos)
     # SQ.playground.removeCorners(block, cpos)
 
     return len
+
+  countCorners: (block, cpos) ->
+    userId = SQ.Users.current().id
+    neg = 0
+    corners = SQ.Fun.copy(SQ.playground.corners)
+
+    for c in block.corners
+      # corners coord has been adjusted
+      pos = [c[0] + cpos[0], c[1] + cpos[1]]
+      if @withinGrid(pos)
+        if corners[pos.toString()]
+          if corners[pos.toString()][userId]
+            neg += 1
+          else
+            corners[pos.toString()][userId] = true
+        else
+          corners[pos.toString()] = {}
+          corners[pos.toString()][userId] = true
+
+    # console.log corners
+
+    _corners = {}
+    for k, v of corners
+      if v[userId] is true
+        _corners[k] = v
+
+    Object.keys(_corners).length - neg
 
   # adjust relative coord to dot[0,0]
   adjustCoord: (block, dot) ->
@@ -108,11 +135,14 @@ class AI
 
   makeRotate: (block, n) ->
     n = parseInt n
-    if n > 6 or n < 0
+    if n > 7 or n < 0
       throw new Error('rotate wrong n')
 
-    [0...Math.min(n, 3)].map () =>
-      @Blocks.rotateCW(block)
+    if n is 0
+      return
+    if n > 0
+      [0...Math.min(n, 3)].map () =>
+        @Blocks.rotateCW(block)
     if n > 3
       @Blocks.flipH(block)
     if n > 4
@@ -131,8 +161,8 @@ class AI
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
       if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-        res.push @moveString(cpos, '0', dot, @countCorners(block, cpos))
-        # res.push '0,' + dot.toString() + ',' + @countCorners(block, cpos)
+        res.push @moveString(cpos, '0', dot, @computeValue(block, cpos))
+        # res.push '0,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
     [1,2,3].map (i) =>
@@ -140,16 +170,16 @@ class AI
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
         if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-          res.push @moveString(cpos, i, dot, @countCorners(block, cpos))
-          # res.push i + ',' + dot.toString() + ',' + @countCorners(block, cpos)
+          res.push @moveString(cpos, i, dot, @computeValue(block, cpos))
+          # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
         @recoverCoord(block, dot)
 
     @Blocks.flipH(block)
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
       if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-        res.push @moveString(cpos, '4', dot, @countCorners(block, cpos))
-        # res.push '4,' + dot.toString() + ',' + @countCorners(block, cpos)
+        res.push @moveString(cpos, '4', dot, @computeValue(block, cpos))
+        # res.push '4,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
     [5,6,7].map (i) =>
@@ -157,8 +187,8 @@ class AI
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
         if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-          res.push @moveString(cpos, i, dot, @countCorners(block, cpos))
-          # res.push i + ',' + dot.toString() + ',' + @countCorners(block, cpos)
+          res.push @moveString(cpos, i, dot, @computeValue(block, cpos))
+          # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
         @recoverCoord(block, dot)
 
     @restoreInit(block)
@@ -186,12 +216,17 @@ class AI
     @Blocks.updateDots(block)
 
   makeMove: (move, block) ->
-    data = move.split(',')
-    rotateN = data[2]
-    value = data[5]
+    rotateN = move[2]
+    value = move[5]
     @makeRotate(block, rotateN)
     SQ.Users.finishTurn = true
-    SQ.playground.placeN('ai', block.order, [data[0], data[1]])
+
+    # SQ.board.addChild(block)
+    # SQ.playground.place(block, [move[0], move[1]])
+    # SQ.playground.finishPlace(block)
+    # SQ.playground.udpateInfoBoard()
+
+    SQ.playground.placeN('ai', block.order, [move[0], move[1]])
 
   pickMove: (moves) ->
     return moves[0]
@@ -212,8 +247,8 @@ class AI
     console.log res
 
     res.sort (a, b) ->
-      m = parseInt(a.split(',')[5])
-      n = parseInt(b.split(',')[5])
+      m = parseInt(a[5])
+      n = parseInt(b[5])
       if m - n < 0
         return 1
       else if m - n == 0
@@ -227,16 +262,18 @@ class AI
   # decide the first 4 or 5 steps before reaching anyone
   computeStartupMoves: ->
     block = @pickStartupBlocks()
-    res = []
+    res = new SQ.Fun.Set()
 
     for cpos in SQ.playground.getCorners()
       arr = @iterateRotate(block, cpos)
-      res = res.concat arr
+      arr.map (e) ->
+        res.push e
 
-    console.log res
+    res = res.toArray()
+
     res.sort (a, b) ->
-      m = parseInt(a.split(',')[5])
-      n = parseInt(b.split(',')[5])
+      m = parseInt(a[5])
+      n = parseInt(b[5])
       if m - n < 0
         return 1
       else if m - n == 0
@@ -244,8 +281,10 @@ class AI
       else if m - n > 0
         return -1
 
+    console.log res
+
     move = @pickMove(res)
-    console.log 'move:' + block.order + ';' + move.toString()
+    console.log 'move: block-' + block.order + '; corner(' + move[0] + ',' + move[1] + '); with rotate: ' + move[2] + '; center dot: (' + move[3] + ',' + move[4] + '); with value: ' + move[5];
     @makeMove(move, block)
 
   computeMoves: ->

@@ -84,7 +84,7 @@ class Blocks
   transBlock: (block, type) ->
     return unless type in ['flipV', 'flipH', 'rotateCW', 'rotateACW']
     this[type](block)
-    @place(block, block.gx, block.gy)
+    @place(block, [block.gx, block.gy])
 
   updateDots: (block) ->
     k = block.coord.length
@@ -99,7 +99,8 @@ class Blocks
     dotArray = []
     corners = []
     borders = []
-    cornerDots = []
+    cornerDots = new SQ.Fun.Set()
+
     tempMap = {}
     block.coord.map (pos) ->
       tempMap[pos.toString()] = 1
@@ -156,7 +157,7 @@ class Blocks
         return pos
       return flag
 
-    return [corners, borders, cornerDots]
+    return [corners, borders, cornerDots.toArray()]
 
 
   getCorners: (block) ->
@@ -168,8 +169,8 @@ class Blocks
   placable: (block, x, y) ->
     SQ.playground.placable(block, x, y)
 
-  place: (block, x, y) ->
-    SQ.playground.place(block, x, y)
+  place: (block, coord) ->
+    SQ.playground.place(block, coord)
     if SQ.Users.current().isHuman()
       @addControlPanel(block)
 
@@ -255,7 +256,7 @@ class Blocks
 
       gxy = self.getPos(block)
       if self.placable(block, gxy[0], gxy[1])
-        self.place(block, gxy[0], gxy[1])
+        self.place(block, gxy)
         # window.alert(gx.toString() + ':' + gy.toString())
       else
         self.placeBack(block)

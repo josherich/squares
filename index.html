@@ -46,6 +46,26 @@
       color: white;
       background: rgba(0,0,0,0.5);
     }
+    .info:hover .info-board {
+      display: block;
+    }
+    .info-board {
+      display: none;
+    }
+    .row {
+      margin: 0;
+      padding: 0;
+      height: 20px;
+    }
+    .dd {
+      width: 20px;
+      height: 20px;
+      overflow: hidden;
+      display: inline-block;
+      border: 1px solid #333;
+      text-align: center;
+      background: aquamarine;
+    }
   </style>
 
   <script src="public/vendor/pixi.dev.js"></script>
@@ -73,6 +93,7 @@
   </div>
   <div class="pause">Pause</div>
   <div class="info">
+    <p>Info Panel</p>
     <div class="info-board"></div>
   </div>
   <div id="debug">
