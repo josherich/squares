@@ -317,15 +317,17 @@ class Playground
       return false
 
   # TODO: add corner check to placable
-  placable: (block, x, y) =>
+  placable: (block, coord) =>
     flag = false
     # flag = false unless @corners[[x, y].toString()]
+    x = coord[0]
+    y = coord[1]
     console.log '=== placable start ==='
     # inside grid
     for pos in block.coord
       _x = x + pos[0]
       _y = y + pos[1]
-      if _x > 19 or x < 0 or _y > 19 or _y < 0
+      if _x > 19 or _x < 0 or _y > 19 or _y < 0
         console.log 'fail - out of grid bound'
         return false
 
@@ -388,11 +390,15 @@ class Playground
     else
       SQ.board.addChild(block)
 
-    if @placable(block, x, y)
-      @place(block, x, y, true)
+    if type is 'ai'
+      @place(block, pos, true)
       @finishPlace(block)
     else
-      @placeBack(block)
+      if @placable(block, pos)
+        @place(block, pos, true)
+        @finishPlace(block)
+      else
+        @placeBack(block)
     @udpateInfoBoard()
 
 

@@ -133,35 +133,39 @@ class AI
         flag = false
     flag
 
-  makeRotate: (block, n) ->
-    n = parseInt n
-    if n > 7 or n < 0
-      throw new Error('rotate wrong n')
+  applyRotate: (block, stats) ->
+    block.coord = stats.coord
+    block.corners = stats.corners
+    block.borders = stats.borders
+    block.cornerDots = stats.cornerDots
+    @Blocks.updateDots(block)
+    # @adjustCoord(block, cdot)
 
-    if n is 0
-      return
-    if n > 0
-      [0...Math.min(n, 3)].map () =>
-        @Blocks.rotateCW(block)
-    if n > 3
-      @Blocks.flipH(block)
-    if n > 4
-      [4...n].map () =>
-        @Blocks.rotateCW(block)
+  createMove: (cpos, stats, dpos, cornerN) ->
+    cpos: cpos
+    stats: stats
+    dot: dpos
+    cornerN: cornerN
 
-  moveString: (cpos, rotateN, dpos, cornerN) ->
-    return [cpos.toString(), rotateN, dpos.toString(), cornerN].join(',')
+  copyStats: (block) ->
+    res = {}
+    res.coord = block.coord
+    res.corners = block.corners
+    res.borders = block.borders
+    res.cornerDots = block.cornerDots
+    return res
 
   # param {cpos}: coord of each corner
+  # for each pose, try every corner dots, get viable [pose, cornerdot, value]
   iterateRotate: (block, cpos) ->
-    res = new SQ.Fun.Set()
-
+    # res = new SQ.Fun.Set()
+    res = []
     @saveInit(block)
 
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
-      if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-        res.push @moveString(cpos, '0', dot, @computeValue(block, cpos))
+      if @validMove(block) and SQ.playground.placable(block, cpos)
+        res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
         # res.push '0,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
@@ -169,16 +173,16 @@ class AI
       @Blocks.rotateCW(block)
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
-        if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-          res.push @moveString(cpos, i, dot, @computeValue(block, cpos))
+        if @validMove(block) and SQ.playground.placable(block, cpos)
+          res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
           # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
         @recoverCoord(block, dot)
 
     @Blocks.flipH(block)
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
-      if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-        res.push @moveString(cpos, '4', dot, @computeValue(block, cpos))
+      if @validMove(block) and SQ.playground.placable(block, cpos)
+        res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
         # res.push '4,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
@@ -186,15 +190,15 @@ class AI
       @Blocks.rotateCW(block)
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
-        if @validMove(block) and SQ.playground.placable(block, cpos[0], cpos[1])
-          res.push @moveString(cpos, i, dot, @computeValue(block, cpos))
+        if @validMove(block) and SQ.playground.placable(block, cpos)
+          res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
           # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
         @recoverCoord(block, dot)
 
     @restoreInit(block)
 
-    console.log res.toArray()
-    res.toArray()
+    console.log res
+    res
 
   copy: (arr) ->
     res = []
@@ -216,9 +220,7 @@ class AI
     @Blocks.updateDots(block)
 
   makeMove: (move, block) ->
-    rotateN = move[2]
-    value = move[5]
-    @makeRotate(block, rotateN)
+    @applyRotate(block, move.stats)
     SQ.Users.finishTurn = true
 
     # SQ.board.addChild(block)
@@ -226,7 +228,7 @@ class AI
     # SQ.playground.finishPlace(block)
     # SQ.playground.udpateInfoBoard()
 
-    SQ.playground.placeN('ai', block.order, [move[0], move[1]])
+    SQ.playground.placeN('ai', block.order, move.cpos)
 
   pickMove: (moves) ->
     return moves[0]
@@ -244,11 +246,9 @@ class AI
 
     res = @iterateRotate(block, [0,0])
 
-    console.log res
-
     res.sort (a, b) ->
-      m = parseInt(a[5])
-      n = parseInt(b[5])
+      m = parseInt(a.cornerN)
+      n = parseInt(b.cornerN)
       if m - n < 0
         return 1
       else if m - n == 0
@@ -262,18 +262,16 @@ class AI
   # decide the first 4 or 5 steps before reaching anyone
   computeStartupMoves: ->
     block = @pickStartupBlocks()
-    res = new SQ.Fun.Set()
+    res = []
 
     for cpos in SQ.playground.getCorners()
       arr = @iterateRotate(block, cpos)
       arr.map (e) ->
         res.push e
 
-    res = res.toArray()
-
     res.sort (a, b) ->
-      m = parseInt(a[5])
-      n = parseInt(b[5])
+      m = parseInt(a.cornerN)
+      n = parseInt(b.cornerN)
       if m - n < 0
         return 1
       else if m - n == 0
@@ -284,7 +282,7 @@ class AI
     console.log res
 
     move = @pickMove(res)
-    console.log 'move: block-' + block.order + '; corner(' + move[0] + ',' + move[1] + '); with rotate: ' + move[2] + '; center dot: (' + move[3] + ',' + move[4] + '); with value: ' + move[5];
+    console.log 'move: block-' + block.order + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN;
     @makeMove(move, block)
 
   computeMoves: ->

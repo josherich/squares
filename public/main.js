@@ -143,55 +143,42 @@ AI = (function() {
     return flag;
   };
 
-  AI.prototype.makeRotate = function(block, n) {
-    var _i, _j, _ref, _results, _results1;
-    n = parseInt(n);
-    if (n > 7 || n < 0) {
-      throw new Error('rotate wrong n');
-    }
-    if (n === 0) {
-      return;
-    }
-    if (n > 0) {
-      (function() {
-        _results = [];
-        for (var _i = 0, _ref = Math.min(n, 3); 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
-        return _results;
-      }).apply(this).map((function(_this) {
-        return function() {
-          return _this.Blocks.rotateCW(block);
-        };
-      })(this));
-    }
-    if (n > 3) {
-      this.Blocks.flipH(block);
-    }
-    if (n > 4) {
-      return (function() {
-        _results1 = [];
-        for (var _j = 4; 4 <= n ? _j < n : _j > n; 4 <= n ? _j++ : _j--){ _results1.push(_j); }
-        return _results1;
-      }).apply(this).map((function(_this) {
-        return function() {
-          return _this.Blocks.rotateCW(block);
-        };
-      })(this));
-    }
+  AI.prototype.applyRotate = function(block, stats) {
+    block.coord = stats.coord;
+    block.corners = stats.corners;
+    block.borders = stats.borders;
+    block.cornerDots = stats.cornerDots;
+    return this.Blocks.updateDots(block);
   };
 
-  AI.prototype.moveString = function(cpos, rotateN, dpos, cornerN) {
-    return [cpos.toString(), rotateN, dpos.toString(), cornerN].join(',');
+  AI.prototype.createMove = function(cpos, stats, dpos, cornerN) {
+    return {
+      cpos: cpos,
+      stats: stats,
+      dot: dpos,
+      cornerN: cornerN
+    };
+  };
+
+  AI.prototype.copyStats = function(block) {
+    var res;
+    res = {};
+    res.coord = block.coord;
+    res.corners = block.corners;
+    res.borders = block.borders;
+    res.cornerDots = block.cornerDots;
+    return res;
   };
 
   AI.prototype.iterateRotate = function(block, cpos) {
     var res;
-    res = new SQ.Fun.Set();
+    res = [];
     this.saveInit(block);
     block.cornerDots.map((function(_this) {
       return function(dot) {
         _this.adjustCoord(block, dot);
-        if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-          res.push(_this.moveString(cpos, '0', dot, _this.computeValue(block, cpos)));
+        if (_this.validMove(block) && SQ.playground.placable(block, cpos)) {
+          res.push(_this.createMove(cpos, _this.copyStats(block), dot, _this.computeValue(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
@@ -201,8 +188,8 @@ AI = (function() {
         _this.Blocks.rotateCW(block);
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
-          if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-            res.push(_this.moveString(cpos, i, dot, _this.computeValue(block, cpos)));
+          if (_this.validMove(block) && SQ.playground.placable(block, cpos)) {
+            res.push(_this.createMove(cpos, _this.copyStats(block), dot, _this.computeValue(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
@@ -212,8 +199,8 @@ AI = (function() {
     block.cornerDots.map((function(_this) {
       return function(dot) {
         _this.adjustCoord(block, dot);
-        if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-          res.push(_this.moveString(cpos, '4', dot, _this.computeValue(block, cpos)));
+        if (_this.validMove(block) && SQ.playground.placable(block, cpos)) {
+          res.push(_this.createMove(cpos, _this.copyStats(block), dot, _this.computeValue(block, cpos)));
         }
         return _this.recoverCoord(block, dot);
       };
@@ -223,16 +210,16 @@ AI = (function() {
         _this.Blocks.rotateCW(block);
         return block.cornerDots.map(function(dot) {
           _this.adjustCoord(block, dot);
-          if (_this.validMove(block) && SQ.playground.placable(block, cpos[0], cpos[1])) {
-            res.push(_this.moveString(cpos, i, dot, _this.computeValue(block, cpos)));
+          if (_this.validMove(block) && SQ.playground.placable(block, cpos)) {
+            res.push(_this.createMove(cpos, _this.copyStats(block), dot, _this.computeValue(block, cpos)));
           }
           return _this.recoverCoord(block, dot);
         });
       };
     })(this));
     this.restoreInit(block);
-    console.log(res.toArray());
-    return res.toArray();
+    console.log(res);
+    return res;
   };
 
   AI.prototype.copy = function(arr) {
@@ -261,12 +248,9 @@ AI = (function() {
   };
 
   AI.prototype.makeMove = function(move, block) {
-    var rotateN, value;
-    rotateN = move[2];
-    value = move[5];
-    this.makeRotate(block, rotateN);
+    this.applyRotate(block, move.stats);
     SQ.Users.finishTurn = true;
-    return SQ.playground.placeN('ai', block.order, [move[0], move[1]]);
+    return SQ.playground.placeN('ai', block.order, move.cpos);
   };
 
   AI.prototype.pickMove = function(moves) {
@@ -290,11 +274,10 @@ AI = (function() {
     var block, move, res;
     block = this.pickStartupBlocks();
     res = this.iterateRotate(block, [0, 0]);
-    console.log(res);
     res.sort(function(a, b) {
       var m, n;
-      m = parseInt(a[5]);
-      n = parseInt(b[5]);
+      m = parseInt(a.cornerN);
+      n = parseInt(b.cornerN);
       if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
@@ -310,7 +293,7 @@ AI = (function() {
   AI.prototype.computeStartupMoves = function() {
     var arr, block, cpos, move, res, _i, _len, _ref;
     block = this.pickStartupBlocks();
-    res = new SQ.Fun.Set();
+    res = [];
     _ref = SQ.playground.getCorners();
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       cpos = _ref[_i];
@@ -319,11 +302,10 @@ AI = (function() {
         return res.push(e);
       });
     }
-    res = res.toArray();
     res.sort(function(a, b) {
       var m, n;
-      m = parseInt(a[5]);
-      n = parseInt(b[5]);
+      m = parseInt(a.cornerN);
+      n = parseInt(b.cornerN);
       if (m - n < 0) {
         return 1;
       } else if (m - n === 0) {
@@ -334,7 +316,7 @@ AI = (function() {
     });
     console.log(res);
     move = this.pickMove(res);
-    console.log('move: block-' + block.order + '; corner(' + move[0] + ',' + move[1] + '); with rotate: ' + move[2] + '; center dot: (' + move[3] + ',' + move[4] + '); with value: ' + move[5]);
+    console.log('move: block-' + block.order + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN);
     return this.makeMove(move, block);
   };
 
@@ -614,8 +596,8 @@ Blocks = (function() {
 
   Blocks.prototype.getPlacePosition = function(pos) {};
 
-  Blocks.prototype.placable = function(block, x, y) {
-    return SQ.playground.placable(block, x, y);
+  Blocks.prototype.placable = function(block, coord) {
+    return SQ.playground.placable(block, coord);
   };
 
   Blocks.prototype.place = function(block, coord) {
@@ -739,7 +721,7 @@ Blocks = (function() {
         y: 1
       };
       gxy = self.getPos(block);
-      if (self.placable(block, gxy[0], gxy[1])) {
+      if (self.placable(block, gxy)) {
         return self.place(block, gxy);
       } else {
         return self.placeBack(block);
@@ -1323,16 +1305,18 @@ Playground = (function() {
     }
   };
 
-  Playground.prototype.placable = function(block, x, y) {
-    var flag, pos, validFistStep, _i, _j, _len, _len1, _ref, _ref1, _x, _y;
+  Playground.prototype.placable = function(block, coord) {
+    var flag, pos, validFistStep, x, y, _i, _j, _len, _len1, _ref, _ref1, _x, _y;
     flag = false;
+    x = coord[0];
+    y = coord[1];
     console.log('=== placable start ===');
     _ref = block.coord;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       pos = _ref[_i];
       _x = x + pos[0];
       _y = y + pos[1];
-      if (_x > 19 || x < 0 || _y > 19 || _y < 0) {
+      if (_x > 19 || _x < 0 || _y > 19 || _y < 0) {
         console.log('fail - out of grid bound');
         return false;
       }
@@ -1412,11 +1396,16 @@ Playground = (function() {
     } else {
       SQ.board.addChild(block);
     }
-    if (this.placable(block, x, y)) {
-      this.place(block, x, y, true);
+    if (type === 'ai') {
+      this.place(block, pos, true);
       this.finishPlace(block);
     } else {
-      this.placeBack(block);
+      if (this.placable(block, pos)) {
+        this.place(block, pos, true);
+        this.finishPlace(block);
+      } else {
+        this.placeBack(block);
+      }
     }
     return this.udpateInfoBoard();
   };

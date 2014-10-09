@@ -166,8 +166,8 @@ class Blocks
 
   getPlacePosition: (pos) ->
 
-  placable: (block, x, y) ->
-    SQ.playground.placable(block, x, y)
+  placable: (block, coord) ->
+    SQ.playground.placable(block, coord)
 
   place: (block, coord) ->
     SQ.playground.place(block, coord)
@@ -255,7 +255,7 @@ class Blocks
       block.scale = {x:1, y:1}
 
       gxy = self.getPos(block)
-      if self.placable(block, gxy[0], gxy[1])
+      if self.placable(block, gxy)
         self.place(block, gxy)
         # window.alert(gx.toString() + ':' + gy.toString())
       else
