@@ -1,4 +1,4 @@
-var AI, BLOCK, Blocks, Fun, MARGIN, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused,
+var AI, BLOCK, Blocks, Fun, MARGIN, MARGIN_L, MARGIN_T, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 AI = (function() {
@@ -12,7 +12,7 @@ AI = (function() {
 
   AI.prototype.strategyMode = [];
 
-  AI.prototype.startupBlocks = [1, 2, 3, 6, 7, 8, 9, 11];
+  AI.prototype.startupBlocks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
   AI.prototype.corners = {};
 
@@ -270,6 +270,8 @@ AI = (function() {
     }
   };
 
+  AI.prototype.pickBlocks = function() {};
+
   AI.prototype.computeFirstMove = function() {
     var block, move, res;
     block = this.pickStartupBlocks();
@@ -320,7 +322,10 @@ AI = (function() {
     return this.makeMove(move, block);
   };
 
-  AI.prototype.computeMoves = function() {};
+  AI.prototype.computeMoves = function() {
+    var block;
+    return block = this.pickBlocks();
+  };
 
   AI.prototype.computeEndingMoves = function() {};
 
@@ -331,9 +336,9 @@ AI = (function() {
   AI.prototype.compute = function() {
     if (this.turn === 0) {
       this.computeFirstMove();
-    } else if (this.turn < 5) {
+    } else if (this.turn < 10) {
       this.computeStartupMoves();
-    } else if (this.turn > 5 && this.turn < 18) {
+    } else if (this.turn > 10 && this.turn < 18) {
       this.computeMoves();
     } else if (this.turn > 17) {
       this.computeEndingMoves();
@@ -675,8 +680,8 @@ Blocks = (function() {
 
   Blocks.prototype.getPos = function(block) {
     var gx, gy;
-    gx = Math.max(0, Math.round((block.position.x - MARGIN) / WIDTH));
-    gy = Math.max(0, Math.round((block.position.y - MARGIN) / WIDTH));
+    gx = Math.max(0, Math.round((block.position.x - MARGIN_L) / WIDTH));
+    gy = Math.max(0, Math.round((block.position.y - MARGIN_T) / WIDTH));
     return [gx, gy];
   };
 
@@ -940,7 +945,18 @@ animate = function() {
   return requestAnimFrame(animate);
 };
 
-MARGIN = 74;
+PIXI.Texture.Draw = function(cb) {
+  var canvas;
+  canvas = document.createElement('canvas');
+  if (typeof cb === 'function') {
+    cb(canvas);
+  }
+  return PIXI.Texture.fromCanvas(canvas);
+};
+
+MARGIN_L = 274;
+
+MARGIN_T = 74;
 
 WIDTH = 32;
 
@@ -957,6 +973,7 @@ Playground = (function() {
     this.getStat = __bind(this.getStat, this);
     this.execStep = __bind(this.execStep, this);
     this.initUser(2);
+    this.drawBackground();
     this.initContainer();
     this.initGameControl();
     this.loadResource((function(_this) {
@@ -1024,6 +1041,15 @@ Playground = (function() {
         return requestAnimFrame(animate);
       }
     });
+    $('.restart').click(function() {
+      $('canvas').remove();
+      window.stage = null;
+      window.stage = new PIXI.Stage(0xffffff);
+      window.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight);
+      SQ.board = null;
+      this.board = null;
+      return SQ.playground = new Playground();
+    });
     return $('#move').click(function() {
       var n, x, y;
       n = $('.block-n').val();
@@ -1079,10 +1105,7 @@ Playground = (function() {
   };
 
   Playground.prototype.getCoord = function(pos) {
-    var margin, width;
-    margin = 74;
-    width = 32;
-    return [margin + pos[0] * width, margin + pos[1] * width];
+    return [MARGIN_L + pos[0] * WIDTH, MARGIN_T + pos[1] * WIDTH];
   };
 
   Playground.prototype.initGrid = function() {
@@ -1130,12 +1153,29 @@ Playground = (function() {
     return SQ.Grid = self.Grid;
   };
 
+  Playground.prototype.drawBackground = function() {
+    var bg;
+    bg = new PIXI.Sprite(PIXI.Texture.Draw(function(canvas) {
+      var context, grd;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      context = canvas.getContext('2d');
+      context.rect(0, 0, canvas.width, canvas.height);
+      grd = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grd.addColorStop(0, '#6EB8D0');
+      grd.addColorStop(1, '#D78C93');
+      context.fillStyle = grd;
+      return context.fill();
+    }));
+    return stage.addChild(bg);
+  };
+
   Playground.prototype.drawBlockPanel = function(blocks) {
     var blockPanel, k, self, v, _ref;
     self = this;
     SQ.panel = blockPanel = new PIXI.DisplayObjectContainer();
-    blockPanel.position.x = 788 - 60;
-    blockPanel.position.y = 10;
+    blockPanel.position.x = window.innerWidth - 200;
+    blockPanel.position.y = 0;
     blockPanel.width = 32;
     blockPanel.height = 700;
     blockPanel.interactive = true;
@@ -1521,8 +1561,8 @@ Playground = (function() {
     return this.Grid.map(function(e, i) {
       var gy;
       gy = e[0];
-      console.assert(gy[0] === (74 + 32 * i), 'grid init');
-      console.assert(gy[1] === 74, 'grid init');
+      console.assert(gy[0] === (MARGIN_L + WIDTH * i), 'grid init');
+      console.assert(gy[1] === MARGIN_T, 'grid init');
       console.assert(gy[2] === 0, 'grid init');
       return console.assert(gy[3] === null, 'grid init');
     });

@@ -225,8 +225,8 @@ class Blocks
     SQ.playground.placeBack(block)
 
   getPos: (block) ->
-    gx = Math.max(0, Math.round((block.position.x - MARGIN) / WIDTH))
-    gy = Math.max(0, Math.round((block.position.y - MARGIN) / WIDTH))
+    gx = Math.max(0, Math.round((block.position.x - MARGIN_L) / WIDTH))
+    gy = Math.max(0, Math.round((block.position.y - MARGIN_T) / WIDTH))
     return [gx, gy]
 
   setupTouchEvent: (block) ->

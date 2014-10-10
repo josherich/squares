@@ -9,7 +9,7 @@ class AI
 
   strategyMode: []
 
-  startupBlocks: [1,2,3,6,7,8,9,11]
+  startupBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
 
   corners: {}
 
@@ -241,6 +241,10 @@ class AI
         @startupBlocks.splice(i, 1)
         return @getBlock(index)
 
+  pickBlocks: () ->
+    # iterate block from current user blocks
+    # computeMove(block)
+
   computeFirstMove: ->
     block = @pickStartupBlocks()
 
@@ -286,6 +290,8 @@ class AI
     @makeMove(move, block)
 
   computeMoves: ->
+    block = @pickBlocks()
+
 
 
   computeEndingMoves: ->
@@ -300,9 +306,9 @@ class AI
   compute: () ->
     if @turn is 0
       @computeFirstMove()
-    else if @turn < 5
+    else if @turn < 10
       @computeStartupMoves()
-    else if @turn > 5 and @turn < 18
+    else if @turn > 10 and @turn < 18
       @computeMoves()
     else if @turn > 17
       @computeEndingMoves()

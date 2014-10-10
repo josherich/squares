@@ -6,11 +6,24 @@
     body {
       margin: 0;
       padding: 0;
-      background-color: #FFFFFF;
     }
     canvas {
       margin: 0 auto;
       display: block;
+    }
+    .panel {
+      position: absolute;
+      height: 10px;
+      width: 100%;
+      overflow: hidden;
+      opacity: 0;
+      background: white;
+      -webkit-transition: height .6s;
+    }
+    .panel:hover {
+      height: 500px;
+      opacity: 1;
+      -webkit-transition: height .6s;
     }
     #debug {
       position: fixed;
@@ -75,48 +88,34 @@
 
 </head>
 <body>
-  <!-- <div id="user"></div> -->
-<!--   <div id="score_board">
-    <div class="user-block">Player 1: <div id="u1"></div></div>
-    <div class="user-block">Player 2: <div id="u2"></div></div>
-    <div class="user-block">Player 3: <div id="u3"></div></div>
-    <div class="user-block">Player 4: <div id="u4"></div></div>
-  </div> -->
   <div class="panel">
-    <span>block #:</span>
-    <input type="text" class="block-n">
-    <span>dx:</span>
-    <input type="text" class="dx">
-    <span>dy:</span>
-    <input type="text" class="dy">
-    <button id="move">Go</button>
-  </div>
-  <div class="pause">Pause</div>
-  <div class="info">
-    <p>Info Panel</p>
-    <div class="info-board"></div>
-  </div>
-  <div id="debug">
-    <div class="row"></div>
-    <div class="row"></div>
-    <div class="row"></div>
-<!--     <div class="row">
-      <button id="block">Place Block</button>
-    </div> -->
-<!--     <div class="row">
-      <button id="follower">Finish</button>
+
+    <div class="manual">
+      <span>block #:</span>
+      <input type="text" class="block-n">
+      <span>dx:</span>
+      <input type="text" class="dx">
+      <span>dy:</span>
+      <input type="text" class="dy">
+      <button id="move">Go</button>
     </div>
-    <div class="row"></div>
-    <div class="row">
-      <button id="rotate">Rotate</button>
-    </div> -->
+
+    <button class="pause">Pause</button>
+    <button class="restart">Restart</button>
+
+    <div class="info">
+      <p>Info Panel</p>
+      <div class="info-board"></div>
+    </div>
+
   </div>
+
 
   <script src="public/main.js"></script>
   <script type="text/javascript">
-    var select = document.querySelectorAll
-    var stage = new PIXI.Stage(0x888888)
-    var renderer = PIXI.autoDetectRenderer(928 ,788)
+    var select = document.querySelectorAll;
+    var stage = new PIXI.Stage(0xffffff);
+    var renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight);
 
     var SQ = {};
     SQ.Mediator = Mediator;

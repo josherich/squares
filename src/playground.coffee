@@ -8,7 +8,14 @@ animate = ->
   renderer.render(stage)
   requestAnimFrame(animate)
 
-MARGIN = 74
+PIXI.Texture.Draw = (cb) ->
+  canvas = document.createElement('canvas')
+  if typeof cb is 'function'
+    cb(canvas)
+  return PIXI.Texture.fromCanvas(canvas)
+
+MARGIN_L = 274
+MARGIN_T = 74
 WIDTH = 32
 
 BLOCK = [
@@ -39,6 +46,7 @@ BLOCK = [
 class Playground
   constructor: ()->
     @initUser(2)
+    @drawBackground()
     @initContainer()
     @initGameControl()
     # @initFBSync()
@@ -96,11 +104,21 @@ class Playground
 
   initGameControl: () ->
     self = this
+    # multiple bind
     $('.pause').click () ->
       isPaused = !isPaused
       window.alert('game paused: ' + isPaused)
       unless isPaused
         requestAnimFrame(animate)
+
+    $('.restart').click () ->
+      $('canvas').remove()
+      window.stage = null
+      window.stage = new PIXI.Stage(0xffffff)
+      window.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight)
+      SQ.board = null
+      @board = null
+      SQ.playground = new Playground()
 
     $('#move').click () ->
       n = $('.block-n').val()
@@ -140,9 +158,7 @@ class Playground
       @placeN(step.blockOrder, pos[0], pos[1])
 
   getCoord: (pos) ->
-    margin = 74
-    width = 32
-    return [margin + pos[0] * width, margin + pos[1] * width]
+    return [MARGIN_L + pos[0] * WIDTH, MARGIN_T + pos[1] * WIDTH]
 
   initGrid: () ->
     self = this
@@ -188,11 +204,27 @@ class Playground
     drawGrid()
     SQ.Grid = self.Grid
 
+  drawBackground: () ->
+    bg = new PIXI.Sprite(PIXI.Texture.Draw (canvas) ->
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      context = canvas.getContext('2d')
+      context.rect(0, 0, canvas.width, canvas.height)
+
+      grd = context.createLinearGradient(0, 0, canvas.width, canvas.height)
+      grd.addColorStop(0, '#6EB8D0')
+      grd.addColorStop(1, '#D78C93')
+      context.fillStyle = grd
+      context.fill()
+    )
+
+    stage.addChild(bg)
+
   drawBlockPanel: (blocks) ->
     self = this
     SQ.panel = blockPanel = new PIXI.DisplayObjectContainer()
-    blockPanel.position.x = 788 - 60
-    blockPanel.position.y = 10
+    blockPanel.position.x = window.innerWidth - 200
+    blockPanel.position.y = 0
     blockPanel.width = 32
     blockPanel.height = 700
     blockPanel.interactive = true
@@ -501,8 +533,8 @@ class Playground
     # grid
     @Grid.map (e, i) ->
       gy = e[0];
-      console.assert(gy[0] is (74 + 32 * i), 'grid init')
-      console.assert(gy[1] is 74, 'grid init')
+      console.assert(gy[0] is (MARGIN_L + WIDTH * i), 'grid init')
+      console.assert(gy[1] is MARGIN_T, 'grid init')
       console.assert(gy[2] is 0, 'grid init')
       console.assert(gy[3] is null, 'grid init')
 
