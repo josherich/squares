@@ -9,7 +9,7 @@ class AI
 
   strategyMode: []
 
-  startupBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+  startupBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
   corners: {}
 
@@ -37,23 +37,6 @@ class AI
     else
       return false
 
-  # addCorners: (block, x, y) ->
-  #   userId = SQ.Users.current().id
-  #   corners = {}
-  #   for k,v of SQ.playground.corners
-  #     corners[k] = v
-
-  #   for c in block.corners
-  #     # corners coord has been adjusted
-  #     pos = c
-  #     if @withinGrid(pos)
-  #       if corners[pos.toString()]
-  #         corners[pos.toString()][userId] = true
-  #       else
-  #         corners[pos.toString()] = {}
-  #         corners[pos.toString()][userId] = true
-  #   Object.keys(corners).length
-
   addBorders: (block, x, y) ->
     userId = SQ.Users.current().id
     for b in block.borders
@@ -72,9 +55,6 @@ class AI
   computeValue: (block, cpos) ->
     len = @countCorners(block, cpos)
 
-    # len = SQ.playground.addCorners(block, cpos)
-    # SQ.playground.removeCorners(block, cpos)
-
     return len
 
   countCorners: (block, cpos) ->
@@ -85,6 +65,7 @@ class AI
     for c in block.corners
       # corners coord has been adjusted
       pos = [c[0] + cpos[0], c[1] + cpos[1]]
+      continue if not SQ.playground.withinGrid(pos) or SQ.playground.blockPlaced(pos)
       if @withinGrid(pos)
         if corners[pos.toString()]
           if corners[pos.toString()][userId]
@@ -96,6 +77,10 @@ class AI
           corners[pos.toString()][userId] = true
 
     # console.log corners
+    for k,v in corners
+      pos = e.split(',').map (e) -> return parseInt(e)
+      if SQ.playground.getStat(pos[0], pos[1]) is 1 or SQ.playground.borders[k][userId]
+        delete corners[k]
 
     _corners = {}
     for k, v of corners
@@ -286,6 +271,8 @@ class AI
     console.log res
 
     move = @pickMove(res)
+    unless move
+      window.alert('You win, bitch!')
     console.log 'move: block-' + block.order + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN;
     @makeMove(move, block)
 
@@ -306,9 +293,9 @@ class AI
   compute: () ->
     if @turn is 0
       @computeFirstMove()
-    else if @turn < 10
+    else if @turn < 20
       @computeStartupMoves()
-    else if @turn > 10 and @turn < 18
+    else if @turn > 20 and @turn < 25
       @computeMoves()
     else if @turn > 17
       @computeEndingMoves()

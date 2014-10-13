@@ -18,5 +18,8 @@ Fun.Set.prototype =
 Fun.copy = (obj) ->
   res = {}
   for k, v of obj
-    res[k] = v
+    if typeof v is 'object'
+      res[k] = Fun.copy v
+    else
+      res[k] = v
   res

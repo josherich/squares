@@ -12,7 +12,7 @@ AI = (function() {
 
   AI.prototype.strategyMode = [];
 
-  AI.prototype.startupBlocks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+  AI.prototype.startupBlocks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
   AI.prototype.corners = {};
 
@@ -74,7 +74,7 @@ AI = (function() {
   };
 
   AI.prototype.countCorners = function(block, cpos) {
-    var c, corners, k, neg, pos, userId, v, _corners, _i, _len, _ref;
+    var c, corners, k, neg, pos, userId, v, _corners, _i, _j, _len, _len1, _ref;
     userId = SQ.Users.current().id;
     neg = 0;
     corners = SQ.Fun.copy(SQ.playground.corners);
@@ -82,6 +82,9 @@ AI = (function() {
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       c = _ref[_i];
       pos = [c[0] + cpos[0], c[1] + cpos[1]];
+      if (!SQ.playground.withinGrid(pos) || SQ.playground.blockPlaced(pos)) {
+        continue;
+      }
       if (this.withinGrid(pos)) {
         if (corners[pos.toString()]) {
           if (corners[pos.toString()][userId]) {
@@ -93,6 +96,15 @@ AI = (function() {
           corners[pos.toString()] = {};
           corners[pos.toString()][userId] = true;
         }
+      }
+    }
+    for (v = _j = 0, _len1 = corners.length; _j < _len1; v = ++_j) {
+      k = corners[v];
+      pos = e.split(',').map(function(e) {
+        return parseInt(e);
+      });
+      if (SQ.playground.getStat(pos[0], pos[1]) === 1 || SQ.playground.borders[k][userId]) {
+        delete corners[k];
       }
     }
     _corners = {};
@@ -318,6 +330,9 @@ AI = (function() {
     });
     console.log(res);
     move = this.pickMove(res);
+    if (!move) {
+      window.alert('You win, bitch!');
+    }
     console.log('move: block-' + block.order + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN);
     return this.makeMove(move, block);
   };
@@ -336,9 +351,9 @@ AI = (function() {
   AI.prototype.compute = function() {
     if (this.turn === 0) {
       this.computeFirstMove();
-    } else if (this.turn < 10) {
+    } else if (this.turn < 20) {
       this.computeStartupMoves();
-    } else if (this.turn > 10 && this.turn < 18) {
+    } else if (this.turn > 20 && this.turn < 25) {
       this.computeMoves();
     } else if (this.turn > 17) {
       this.computeEndingMoves();
@@ -579,7 +594,7 @@ Blocks = (function() {
           return false;
         }
       });
-      return m.length === 1 && n.length === 1;
+      return m.length === n.length;
     });
     borders = dotArray.filter(function(d) {
       var flag;
@@ -636,12 +651,13 @@ Blocks = (function() {
     block.fliph = Circle(10 + offsetx, 10, 10);
     block.flipv = Circle(10 + offsetx, 30, 10);
     block.confirm = Circle(30 + offsetx, 20, 10);
-    console.log(confirm);
     block.rotatecw = Circle(50 + offsetx, 10, 10);
     block.rotateacw = Circle(50 + offsetx, 30, 10);
     block.confirm.mouseup = (function(_this) {
       return function(data) {
-        return SQ.playground.finishPlace(block);
+        if (SQ.playground.placable(block)) {
+          return SQ.playground.finishPlace(block);
+        }
       };
     })(this);
     block.fliph.mouseup = (function(_this) {
@@ -726,11 +742,7 @@ Blocks = (function() {
         y: 1
       };
       gxy = self.getPos(block);
-      if (self.placable(block, gxy)) {
-        return self.place(block, gxy);
-      } else {
-        return self.placeBack(block);
-      }
+      return self.place(block, gxy);
     };
     return block.mousemove = block.touchmove = function(data) {
       var newPosition;
@@ -925,7 +937,11 @@ Fun.copy = function(obj) {
   res = {};
   for (k in obj) {
     v = obj[k];
-    res[k] = v;
+    if (typeof v === 'object') {
+      res[k] = Fun.copy(v);
+    } else {
+      res[k] = v;
+    }
   }
   return res;
 };
@@ -1109,7 +1125,7 @@ Playground = (function() {
   };
 
   Playground.prototype.initGrid = function() {
-    var drawGrid, self, _drawGrid_block;
+    var drawGrid, drawRule, self, _drawGrid_block;
     self = this;
     _drawGrid_block = function(x, y) {
       var tile;
@@ -1129,7 +1145,24 @@ Playground = (function() {
       tile.mouseup = tile.mouseupoutside = tile.touchend = tile.touchendoutside = function(data) {};
       return tile.mousemove = tile.touchmove = function(data) {};
     };
-    drawGrid = function(Grid) {
+    drawRule = function() {
+      var i, j, text, _i, _j, _results;
+      for (i = _i = 0; _i <= 19; i = ++_i) {
+        text = new PIXI.Text(i);
+        text.position.x = MARGIN_L + i * WIDTH - 10;
+        text.position.y = MARGIN_T - WIDTH - 10;
+        self.board.addChild(text);
+      }
+      _results = [];
+      for (j = _j = 0; _j <= 19; j = ++_j) {
+        text = new PIXI.Text(j);
+        text.position.x = MARGIN_L - WIDTH - 10;
+        text.position.y = MARGIN_T + j * WIDTH - 10;
+        _results.push(self.board.addChild(text));
+      }
+      return _results;
+    };
+    drawGrid = function() {
       var gy, i, j, _i, _j;
       for (i = _i = 0; _i <= 19; i = ++_i) {
         gy = [];
@@ -1149,6 +1182,7 @@ Playground = (function() {
     };
     self.Block_el.red = PIXI.Sprite.fromFrame(0);
     console.log(this.Block_el);
+    drawRule();
     drawGrid();
     return SQ.Grid = self.Grid;
   };
@@ -1207,7 +1241,7 @@ Playground = (function() {
       return;
     }
     if (state === 1) {
-      this.Grid[y][x][2] = state;
+      this.Grid[y][x][2] = 1;
       return;
     }
     this.Grid[y][x][2] = this.Grid[y][x][2] || [];
@@ -1252,6 +1286,10 @@ Playground = (function() {
     return res;
   };
 
+  Playground.prototype.blockPlaced = function(pos) {
+    return this.getStat(pos[0], pos[1]) === 1;
+  };
+
   Playground.prototype.addCorners = function(block, cpos) {
     var c, k, pos, userId, v, _corners, _i, _len, _ref, _ref1;
     userId = SQ.Users.current().id;
@@ -1259,7 +1297,10 @@ Playground = (function() {
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       c = _ref[_i];
       pos = [c[0] + cpos[0], c[1] + cpos[1]];
-      if (this.withinGrid(pos)) {
+      if (!this.withinGrid(pos) || this.blockPlaced(pos)) {
+        continue;
+      }
+      if (this.withinGrid(pos) && (!this.borders[pos.toString()] || this.borders[pos.toString()][userId] === false)) {
         this.setOccupied(pos[0], pos[1], userId + '.c');
         if (this.corners[pos.toString()]) {
           this.corners[pos.toString()][userId] = true;
@@ -1314,9 +1355,15 @@ Playground = (function() {
         this.setOccupied(pos[0], pos[1], userId + '.b');
         if (this.borders[pos.toString()]) {
           this.borders[pos.toString()][userId] = true;
+          if (this.corners[pos.toString()]) {
+            this.corners[pos.toString()][userId] = false;
+          }
         } else {
           this.borders[pos.toString()] = {};
           this.borders[pos.toString()][userId] = true;
+          if (this.corners[pos.toString()]) {
+            this.corners[pos.toString()][userId] = false;
+          }
         }
       }
     }
@@ -1348,8 +1395,8 @@ Playground = (function() {
   Playground.prototype.placable = function(block, coord) {
     var flag, pos, validFistStep, x, y, _i, _j, _len, _len1, _ref, _ref1, _x, _y;
     flag = false;
-    x = coord[0];
-    y = coord[1];
+    x = coord ? coord[0] : block.gx;
+    y = coord ? coord[1] : block.gy;
     console.log('=== placable start ===');
     _ref = block.coord;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -1444,7 +1491,7 @@ Playground = (function() {
         this.place(block, pos, true);
         this.finishPlace(block);
       } else {
-        this.placeBack(block);
+
       }
     }
     return this.udpateInfoBoard();
@@ -1462,15 +1509,21 @@ Playground = (function() {
     return block.gy = coord[1];
   };
 
-  Playground.prototype.finishPlace = function(block, fromSync) {
-    block.finish = true;
+  Playground.prototype.writeStats = function(block) {
     block.coord.map((function(_this) {
       return function(rp) {
-        return _this.setOccupied(block.gx + rp[0], block.gy + rp[1], 1);
+        _this.setOccupied(block.gx + rp[0], block.gy + rp[1], 1);
+        _this.corners[[block.gx + rp[0], block.gy + rp[1]].toString()] = {};
+        return _this.borders[[block.gx + rp[0], block.gy + rp[1]].toString()] = {};
       };
     })(this));
     this.addCorners(block, [block.gx, block.gy]);
-    this.addBorders(block, [block.gx, block.gy]);
+    return this.addBorders(block, [block.gx, block.gy]);
+  };
+
+  Playground.prototype.finishPlace = function(block, fromSync) {
+    block.finish = true;
+    this.writeStats(block);
     if (block.type === 'human') {
       this.removeControlPanel(block);
       this.removeEvent(block);
@@ -1481,7 +1534,38 @@ Playground = (function() {
       this.turn += 1;
       SQ.Users.finishTurn = false;
     }
+    this.drawCorners();
     return SQ.Users.nextTurn();
+  };
+
+  Playground.prototype.drawCorners = function() {
+    var k, pos, t, text, v, _i, _len, _ref, _ref1, _results, _text;
+    this.cornerLayer = this.cornerLayer || [];
+    _ref = this.cornerLayer;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      t = _ref[_i];
+      this.board.removeChild(t);
+    }
+    this.cornerLayer = [];
+    _ref1 = this.corners;
+    _results = [];
+    for (k in _ref1) {
+      v = _ref1[k];
+      pos = k.split(',').map(function(e) {
+        return parseInt(e);
+      });
+      if (v[0] || v[1]) {
+        _text = v[0] ? '0' : '1';
+        text = new PIXI.Text(_text);
+        text.position.x = MARGIN_L + pos[0] * WIDTH - 10;
+        text.position.y = MARGIN_T + pos[1] * WIDTH - 10;
+        this.cornerLayer.push(text);
+        _results.push(this.board.addChild(text));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
   };
 
   Playground.prototype.removeControlPanel = function(block) {

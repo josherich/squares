@@ -148,7 +148,7 @@ class Blocks
         else
           return false
 
-      return m.length is 1 and n.length is 1
+      return m.length is n.length
 
     borders = dotArray.filter (d) ->
       flag = false
@@ -194,12 +194,12 @@ class Blocks
     block.fliph = Circle(10 + offsetx, 10, 10)
     block.flipv = Circle(10 + offsetx, 30, 10)
     block.confirm = Circle(30 + offsetx, 20, 10)
-    console.log(confirm)
     block.rotatecw = Circle(50 + offsetx, 10, 10)
     block.rotateacw = Circle(50 + offsetx, 30, 10)
 
     block.confirm.mouseup = (data) =>
-      SQ.playground.finishPlace(block)
+      if SQ.playground.placable(block)
+        SQ.playground.finishPlace(block)
 
     block.fliph.mouseup = (data) =>
       @transBlock(block, 'flipH')
@@ -255,11 +255,11 @@ class Blocks
       block.scale = {x:1, y:1}
 
       gxy = self.getPos(block)
-      if self.placable(block, gxy)
-        self.place(block, gxy)
+      # if self.placable(block, gxy)
+      self.place(block, gxy)
         # window.alert(gx.toString() + ':' + gy.toString())
-      else
-        self.placeBack(block)
+      # else
+        # self.placeBack(block)
 
     block.mousemove = block.touchmove = (data) ->
       if this.dragging
@@ -270,7 +270,6 @@ class Blocks
   computeProp: (block, data, index) ->
     block.coord = data
     block.order = index
-
     com = @computeCorners(block)
     block.corners = com[0]
     block.borders = com[1]

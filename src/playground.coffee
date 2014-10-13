@@ -185,7 +185,19 @@ class Playground
       tile.mousemove = tile.touchmove = (data) ->
         # console.log data
 
-    drawGrid = (Grid) ->
+    drawRule = () ->
+      for i in [0..19]
+        text = new PIXI.Text(i)
+        text.position.x = MARGIN_L + i * WIDTH - 10
+        text.position.y = MARGIN_T - WIDTH - 10
+        self.board.addChild(text)
+      for j in [0..19]
+        text = new PIXI.Text(j)
+        text.position.x = MARGIN_L - WIDTH - 10
+        text.position.y = MARGIN_T + j * WIDTH - 10
+        self.board.addChild(text)
+
+    drawGrid = () ->
       for i in [0..19]
         gy = []
         for j in [0..19]
@@ -201,6 +213,7 @@ class Playground
 
     self.Block_el.red = PIXI.Sprite.fromFrame(0)
     console.log(@Block_el)
+    drawRule()
     drawGrid()
     SQ.Grid = self.Grid
 
@@ -247,7 +260,7 @@ class Playground
     if @Grid[y][x][2] == 1
       return
     if state == 1
-      @Grid[y][x][2] = state
+      @Grid[y][x][2] = 1
       return
 
     @Grid[y][x][2] = @Grid[y][x][2] || []
@@ -280,6 +293,9 @@ class Playground
 
     return res
 
+  blockPlaced: (pos) ->
+    return @getStat(pos[0], pos[1]) is 1
+
   # add corners and return corner count of current user
   addCorners: (block, cpos) ->
     userId = SQ.Users.current().id
@@ -287,7 +303,10 @@ class Playground
     for c in block.corners
       # corners coord has been adjusted
       pos = [c[0] + cpos[0], c[1] + cpos[1]]
-      if @withinGrid(pos)
+      continue if not @withinGrid(pos) or @blockPlaced(pos)
+
+      # border's priority is higher than corner's
+      if @withinGrid(pos) and (not @borders[pos.toString()] or @borders[pos.toString()][userId] is false)
         @setOccupied(pos[0], pos[1], userId + '.c')
         if @corners[pos.toString()]
           @corners[pos.toString()][userId] = true
@@ -296,6 +315,10 @@ class Playground
           @corners[pos.toString()][userId] = true
 
     # console.log @corners
+    # for k, v in @corners
+    #   if Object.keys(v).length is 0
+    #     delete @corners[k]
+    #   else if @borders[k] and @borders[k][userId] is true
 
     _corners = {}
     for k, v of @corners
@@ -326,9 +349,11 @@ class Playground
         @setOccupied(pos[0], pos[1], userId + '.b')
         if @borders[pos.toString()]
           @borders[pos.toString()][userId] = true
+          @corners[pos.toString()][userId] = false if @corners[pos.toString()]
         else
           @borders[pos.toString()] = {}
           @borders[pos.toString()][userId] = true
+          @corners[pos.toString()][userId] = false if @corners[pos.toString()]
 
     console.log(@borders)
 
@@ -352,8 +377,8 @@ class Playground
   placable: (block, coord) =>
     flag = false
     # flag = false unless @corners[[x, y].toString()]
-    x = coord[0]
-    y = coord[1]
+    x = if coord then coord[0] else block.gx
+    y = if coord then coord[1] else block.gy
     console.log '=== placable start ==='
     # inside grid
     for pos in block.coord
@@ -430,7 +455,7 @@ class Playground
         @place(block, pos, true)
         @finishPlace(block)
       else
-        @placeBack(block)
+        # @placeBack(block)
     @udpateInfoBoard()
 
 
@@ -447,14 +472,19 @@ class Playground
     block.gx = coord[0]
     block.gy = coord[1]
 
-  finishPlace: (block, fromSync) =>
-    block.finish = true
-    # relative position
+  writeStats: (block) ->
     block.coord.map (rp) =>
       @setOccupied(block.gx + rp[0], block.gy + rp[1], 1)
+      @corners[[block.gx + rp[0], block.gy + rp[1]].toString()] = {}
+      @borders[[block.gx + rp[0], block.gy + rp[1]].toString()] = {}
 
     @addCorners(block, [block.gx, block.gy])
     @addBorders(block, [block.gx, block.gy])
+
+  finishPlace: (block, fromSync) =>
+    block.finish = true
+    # relative position
+    @writeStats(block)
 
     if block.type is 'human'
       @removeControlPanel(block)
@@ -469,7 +499,24 @@ class Playground
       @turn += 1
       SQ.Users.finishTurn = false
 
+    @drawCorners()
     SQ.Users.nextTurn()
+
+  drawCorners: ->
+    @cornerLayer = @cornerLayer || []
+    for t in @cornerLayer
+      @board.removeChild(t)
+    @cornerLayer = []
+
+    for k,v of @corners
+      pos = k.split(',').map((e)-> return parseInt(e));
+      if v[0] or v[1]
+        _text = if v[0] then '0' else '1'
+        text = new PIXI.Text(_text)
+        text.position.x = MARGIN_L + pos[0] * WIDTH - 10
+        text.position.y = MARGIN_T + pos[1] * WIDTH - 10
+        @cornerLayer.push text
+        @board.addChild(text)
 
   removeControlPanel: (block) ->
     block.removeChild(block.fliph)
