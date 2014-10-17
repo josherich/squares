@@ -2,23 +2,23 @@
   "frames": [
 {
   "filename": "red_64px.png",
-  "frame": {"x": 0,"y": 0,"w": 32,"h": 32},
+  "frame": {"x": 0,"y": 0,"w": 100,"h": 100},
   "rotated": false,
   "trimmed": false,
-  "spriteSourceSize": {"x": 0, "y": 0, "w": 64, "h":64},
-  "sourceSize": {"w": 64, "h":64}
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 100, "h":100},
+  "sourceSize": {"w": 100, "h":100}
 },
 {
   "filename": "blue_64px.png",
-  "frame": {"x": 0,"y": 100,"w": 32,"h": 32},
+  "frame": {"x": 0,"y": 100,"w": 100,"h": 100},
   "rotated": false,
   "trimmed": false,
-  "spriteSourceSize": {"x": 0, "y": 0, "w": 64, "h":64},
-  "sourceSize": {"w": 64, "h":64}
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 100, "h":100},
+  "sourceSize": {"w": 100, "h":100}
 },
 {
   "filename": "yellow_64px.png",
-  "frame": {"x": 100,"y": 0,"w": 64,"h": 64},
+  "frame": {"x": 100,"y": 0,"w": 100,"h": 100},
   "rotated": false,
   "trimmed": false,
   "spriteSourceSize": {"x": 0, "y": 0, "w": 100, "h":100},
@@ -26,11 +26,67 @@
 },
 {
   "filename": "green_64px.png",
-  "frame": {"x": 100,"y": 100,"w": 64,"h": 64},
+  "frame": {"x": 100,"y": 100,"w": 100,"h": 100},
   "rotated": false,
   "trimmed": false,
   "spriteSourceSize": {"x": 0, "y": 0, "w": 100, "h":100},
   "sourceSize": {"w": 100, "h":100}
+},
+{
+  "filename": "grey_64px.png",
+  "frame": {"x": 0,"y": 200,"w": 32,"h": 32},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 32, "h":32},
+  "sourceSize": {"w": 32, "h":32}
+},
+{
+  "filename": "clockwise.png",
+  "frame": {"x": 100,"y": 200,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
+},
+{
+  "filename": "anticlockwise.png",
+  "frame": {"x": 120,"y": 200,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
+},
+{
+  "filename": "vert.png",
+  "frame": {"x": 100,"y": 222,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
+},
+{
+  "filename": "horiz.png",
+  "frame": {"x": 120,"y": 220,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
+},
+{
+  "filename": "tick.png",
+  "frame": {"x": 100,"y": 242,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
+},
+{
+  "filename": "cancel.png",
+  "frame": {"x": 120,"y": 243,"w": 20,"h": 20},
+  "rotated": false,
+  "trimmed": false,
+  "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},
+  "sourceSize": {"w": 20, "h":20}
 }
 ],
 "meta": {
@@ -38,7 +94,7 @@
   "version": "1.0",
   "image": "images.png",
   "format": "RGBA8888",
-  "size": {"w":200,"h":200},
+  "size": {"w":200,"h":300},
   "scale": "1",
   "smartupdate": "$TexturePacker:SmartUpdate:e5b4b12fba470b8ec789ca1bc7d13108:e4f4a916ca759434f4f40b8eb634b7fc:9be8c185d95a5be4a06ec0067a3d8380$"
 }

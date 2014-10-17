@@ -177,29 +177,39 @@ class Blocks
   addControlPanel: (block) ->
     return if block.confirm
     offsetx = 80
-    Circle = (x, y, radius) ->
+    Circle = (x, y, radius, frame) ->
       res = new PIXI.Graphics()
       res.lineStyle(0)
-      res.beginFill(0x8FF0EA, 1)
-      res.drawCircle(0, 0, 10)
+      res.beginFill(0xffffff, 1)
+      res.drawCircle(0, 0, radius)
       res.endFill()
       res.x = x
       res.y = y
       res.interactive = true
       res.buttonMode = true
       res.hitArea = new PIXI.Rectangle(-10,-10,20,20)
+
+      icon = PIXI.Sprite.fromFrame(frame)
+      icon.position.x = -10
+      icon.position.y = -10
+      res.addChild(icon)
+
       block.addChild(res)
       return res
 
-    block.fliph = Circle(10 + offsetx, 10, 10)
-    block.flipv = Circle(10 + offsetx, 30, 10)
-    block.confirm = Circle(30 + offsetx, 20, 10)
-    block.rotatecw = Circle(50 + offsetx, 10, 10)
-    block.rotateacw = Circle(50 + offsetx, 30, 10)
+    block.fliph = Circle(10 + offsetx, 10, 10, 7)
+    block.flipv = Circle(10 + offsetx, 30, 10, 8)
+    block.confirm = Circle(30 + offsetx, 10, 10, 9)
+    block.cancel = Circle(30 + offsetx, 30, 10, 10)
+    block.rotatecw = Circle(50 + offsetx, 10, 10, 5)
+    block.rotateacw = Circle(50 + offsetx, 30, 10, 6)
 
     block.confirm.mouseup = (data) =>
       if SQ.playground.placable(block)
         SQ.playground.finishPlace(block)
+
+    block.cancel.mouseup = () =>
+      SQ.playground.placeBack(block)
 
     block.fliph.mouseup = (data) =>
       @transBlock(block, 'flipH')
@@ -282,6 +292,8 @@ class Blocks
       dot.interactive = true
       dot.position.x = pos[0] * WIDTH
       dot.position.y = pos[1] * WIDTH
+      dot.scale.x = .3
+      dot.scale.y = .3
       block.addChild(dot)
 
 
@@ -307,7 +319,7 @@ class Blocks
     block.interactive = true
     block.buttonMode = true
     block.position.x = Math.floor(index / 7) * 70
-    block.position.y = (index % 7) * 32 * 3 + 70
+    block.position.y = (index % 7) * 30 * 3 + 70
     block.position.ox = block.position.x
     block.position.oy = block.position.y
     block.scale = {x:.5, y:.5}

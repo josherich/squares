@@ -9,7 +9,9 @@ class AI
 
   strategyMode: []
 
-  startupBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+  startupBlocks: [1,2,3,4,5,6,7,8]
+
+  availableBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
   corners: {}
 
@@ -52,10 +54,29 @@ class AI
 
   computeState: ->
 
+  computeStartValue: (block, cpos) ->
+    len = @countCorners(block, cpos)
+    return len
+
   computeValue: (block, cpos) ->
     len = @countCorners(block, cpos)
+    lenEnemy = @countCornersEnemy(block, cpos)
+    console.log lenEnemy
+    return len + lenEnemy * 2
 
-    return len
+  countCornersEnemy: (block, cpos) ->
+    userId = SQ.Users.current().id
+    corners = SQ.Fun.copy(SQ.playground.corners)
+    c = 0
+
+    for co in block.coord
+      pos = [co[0] + cpos[0], co[1] + cpos[1]]
+      for k, v of corners[pos.toString()]
+        continue if k is userId
+        if v is true
+          c += 1
+
+    return c
 
   countCorners: (block, cpos) ->
     userId = SQ.Users.current().id
@@ -68,8 +89,8 @@ class AI
       continue if not SQ.playground.withinGrid(pos) or SQ.playground.blockPlaced(pos)
       if @withinGrid(pos)
         if corners[pos.toString()]
-          if corners[pos.toString()][userId]
-            neg += 1
+          if corners[pos.toString()][userId] is true
+            neg += 2
           else
             corners[pos.toString()][userId] = true
         else
@@ -126,7 +147,8 @@ class AI
     @Blocks.updateDots(block)
     # @adjustCoord(block, cdot)
 
-  createMove: (cpos, stats, dpos, cornerN) ->
+  createMove: (block, cpos, stats, dpos, cornerN) ->
+    block: block
     cpos: cpos
     stats: stats
     dot: dpos
@@ -140,17 +162,14 @@ class AI
     res.cornerDots = block.cornerDots
     return res
 
-  # param {cpos}: coord of each corner
-  # for each pose, try every corner dots, get viable [pose, cornerdot, value]
   iterateRotate: (block, cpos) ->
-    # res = new SQ.Fun.Set()
     res = []
     @saveInit(block)
 
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
       if @validMove(block) and SQ.playground.placable(block, cpos)
-        res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
+        res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeValue(block, cpos))
         # res.push '0,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
@@ -159,7 +178,7 @@ class AI
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
         if @validMove(block) and SQ.playground.placable(block, cpos)
-          res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
+          res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeValue(block, cpos))
           # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
         @recoverCoord(block, dot)
 
@@ -167,7 +186,7 @@ class AI
     block.cornerDots.map (dot) =>
       @adjustCoord(block, dot)
       if @validMove(block) and SQ.playground.placable(block, cpos)
-        res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
+        res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeValue(block, cpos))
         # res.push '4,' + dot.toString() + ',' + @computeValue(block, cpos)
       @recoverCoord(block, dot)
 
@@ -176,8 +195,54 @@ class AI
       block.cornerDots.map (dot) =>
         @adjustCoord(block, dot)
         if @validMove(block) and SQ.playground.placable(block, cpos)
-          res.push @createMove(cpos, @copyStats(block), dot, @computeValue(block, cpos))
+          res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeValue(block, cpos))
           # res.push i + ',' + dot.toString() + ',' + @computeValue(block, cpos)
+        @recoverCoord(block, dot)
+
+    @restoreInit(block)
+
+    console.log res
+    res
+
+
+  # param {cpos}: coord of each corner
+  # for each pose, try every corner dots, get viable [pose, cornerdot, value]
+  iterateRotateStart: (block, cpos) ->
+    # res = new SQ.Fun.Set()
+    res = []
+    @saveInit(block)
+
+    block.cornerDots.map (dot) =>
+      @adjustCoord(block, dot)
+      if @validMove(block) and SQ.playground.placable(block, cpos)
+        res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeStartValue(block, cpos))
+        # res.push '0,' + dot.toString() + ',' + @computeStartValue(block, cpos)
+      @recoverCoord(block, dot)
+
+    [1,2,3].map (i) =>
+      @Blocks.rotateCW(block)
+      block.cornerDots.map (dot) =>
+        @adjustCoord(block, dot)
+        if @validMove(block) and SQ.playground.placable(block, cpos)
+          res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeStartValue(block, cpos))
+          # res.push i + ',' + dot.toString() + ',' + @computeStartValue(block, cpos)
+        @recoverCoord(block, dot)
+
+    @Blocks.flipH(block)
+    block.cornerDots.map (dot) =>
+      @adjustCoord(block, dot)
+      if @validMove(block) and SQ.playground.placable(block, cpos)
+        res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeStartValue(block, cpos))
+        # res.push '4,' + dot.toString() + ',' + @computeStartValue(block, cpos)
+      @recoverCoord(block, dot)
+
+    [5,6,7].map (i) =>
+      @Blocks.rotateCW(block)
+      block.cornerDots.map (dot) =>
+        @adjustCoord(block, dot)
+        if @validMove(block) and SQ.playground.placable(block, cpos)
+          res.push @createMove(block.order, cpos, @copyStats(block), dot, @computeStartValue(block, cpos))
+          # res.push i + ',' + dot.toString() + ',' + @computeStartValue(block, cpos)
         @recoverCoord(block, dot)
 
     @restoreInit(block)
@@ -204,7 +269,9 @@ class AI
     block.cornerDots = block._cornerDots
     @Blocks.updateDots(block)
 
-  makeMove: (move, block) ->
+  makeMove: (move) =>
+    @availableBlocks.splice(@availableBlocks.indexOf(move.block),1)
+    block = @getBlock move.block
     @applyRotate(block, move.stats)
     SQ.Users.finishTurn = true
 
@@ -224,9 +291,11 @@ class AI
     for index, i in @startupBlocks
       if i is rand
         @startupBlocks.splice(i, 1)
+        @availableBlocks.splice(@availableBlocks.indexOf(index),1)
         return @getBlock(index)
 
   pickBlocks: () ->
+    # for index in [0..20]
     # iterate block from current user blocks
     # computeMove(block)
 
@@ -246,7 +315,7 @@ class AI
         return -1
 
     move = @pickMove(res)
-    @makeMove(move, block)
+    @makeMove(move)
 
   # decide the first 4 or 5 steps before reaching anyone
   computeStartupMoves: ->
@@ -254,7 +323,7 @@ class AI
     res = []
 
     for cpos in SQ.playground.getCorners()
-      arr = @iterateRotate(block, cpos)
+      arr = @iterateRotateStart(block, cpos)
       arr.map (e) ->
         res.push e
 
@@ -274,11 +343,33 @@ class AI
     unless move
       window.alert('You win, bitch!')
     console.log 'move: block-' + block.order + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN;
-    @makeMove(move, block)
+    @makeMove(move)
 
   computeMoves: ->
-    block = @pickBlocks()
+    res = []
+    for index in @availableBlocks
+      block = @getBlock index
 
+      for cpos in SQ.playground.getCorners()
+        arr = @iterateRotate(block, cpos)
+        arr.map (e) ->
+          res.push e
+
+    res.sort (a, b) ->
+      m = parseInt(a.cornerN)
+      n = parseInt(b.cornerN)
+      if m - n < 0
+        return 1
+      else if m - n == 0
+        return 0
+      else if m - n > 0
+        return -1
+
+    move = @pickMove(res)
+    unless move
+      window.alert('You win, bitch!')
+    console.log 'move: block-' + move.block + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN;
+    @makeMove(move, block)
 
 
   computeEndingMoves: ->
@@ -293,9 +384,9 @@ class AI
   compute: () ->
     if @turn is 0
       @computeFirstMove()
-    else if @turn < 20
+    else if @turn < 5
       @computeStartupMoves()
-    else if @turn > 20 and @turn < 25
+    else if @turn >= 5 and @turn < 25
       @computeMoves()
     else if @turn > 17
       @computeEndingMoves()

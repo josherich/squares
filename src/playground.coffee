@@ -16,7 +16,7 @@ PIXI.Texture.Draw = (cb) ->
 
 MARGIN_L = 274
 MARGIN_T = 74
-WIDTH = 32
+WIDTH = 30
 
 BLOCK = [
 
@@ -163,13 +163,15 @@ class Playground
   initGrid: () ->
     self = this
     _drawGrid_block = (x, y) ->
-      tile = PIXI.Sprite.fromFrame(0)
+      tile = PIXI.Sprite.fromFrame(4)
       tile.interactive = true
       tile.buttonMode = true
       tile.isSelected = false
       tile.theVal = [x,y]
       tile.position.x = x
       tile.position.y = y
+      # tile.scale.x = .3
+      # tile.scale.y = .3
       tile.anchor.x = 0.5
       tile.anchor.y = 0.5
       tile.tint = 0xffffff
@@ -306,7 +308,7 @@ class Playground
       continue if not @withinGrid(pos) or @blockPlaced(pos)
 
       # border's priority is higher than corner's
-      if @withinGrid(pos) and (not @borders[pos.toString()] or @borders[pos.toString()][userId] is false)
+      if @withinGrid(pos) and (not @borders[pos.toString()] or not @borders[pos.toString()][userId])
         @setOccupied(pos[0], pos[1], userId + '.c')
         if @corners[pos.toString()]
           @corners[pos.toString()][userId] = true
@@ -522,6 +524,7 @@ class Playground
     block.removeChild(block.fliph)
     block.removeChild(block.flipv)
     block.removeChild(block.confirm)
+    block.removeChild(block.cancel)
     block.removeChild(block.rotatecw)
     block.removeChild(block.rotateacw)
 
@@ -558,8 +561,8 @@ class Playground
     block.position.x = block.position.ox
     block.position.y = block.position.oy
     SQ.board.removeChild(block)
-    SQ.panel.addChild(block)
     block.scale = {x:.5, y:.5}
+    SQ.panel.addChild(block)
 
   udpateInfoBoard: () ->
     $('.info-board').html("")
