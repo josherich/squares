@@ -25,6 +25,9 @@ class AI
 
   move: null
 
+  # key gates, try to penetrate them
+  gates: []
+
   getBlock: (i) ->
     return null if i < 0 or i > 20
     return SQ.playground.AIBlocks.getBlock i
@@ -56,12 +59,39 @@ class AI
 
   computeStartValue: (block, cpos) ->
     len = @countCorners(block, cpos)
-    return len
+    lenEnemy = @countCornersEnemy(block, cpos)
+
+    boost = 10
+    arr = block.coord.filter (co) =>
+      return co[0] + cpos[0] is @gates[0][0] and co[1] + cpos[1] is @gates[0][1]
+    gateScore = if arr.length > 0 then boost else 0
+
+    return len + lenEnemy * 2 + gateScore
+
+  searchGate: (userId) ->
+    for i in [0..DIM-2]
+      for j in [0..DIM-2]
+        a = SQ.playground.getBlockStat(i, j)
+        b = SQ.playground.getBlockStat(i+1, j)
+        c = SQ.playground.getBlockStat(i, j+1)
+        d = SQ.playground.getBlockStat(i+1, j+1)
+        arr = [a,b,c,d].filter (e) ->
+          return e is userId
+        continue unless (arr.length is 2)
+
+        if (a is userId and d is userId) or (b is userId and c is userId)
+          console.info('found: ' + i + '; ' + j + '; ' + userId)
+          if SQ.playground.getBlockStat(i,j) is userId
+            @gates.push [i,j+1]
+          else
+            @gates.push [i,j]
+        console.log @gates
 
   computeValue: (block, cpos) ->
     len = @countCorners(block, cpos)
     lenEnemy = @countCornersEnemy(block, cpos)
     console.log lenEnemy
+
     return len + lenEnemy * 2
 
   countCornersEnemy: (block, cpos) ->
@@ -319,6 +349,9 @@ class AI
 
   # decide the first 4 or 5 steps before reaching anyone
   computeStartupMoves: ->
+    userId = SQ.Users.current().id
+    @searchGate(userId)
+
     block = @pickStartupBlocks()
     res = []
 

@@ -1,4 +1,4 @@
-var AI, BLOCK, Blocks, Fun, MARGIN, MARGIN_L, MARGIN_T, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused,
+var AI, Animation, BLOCK, Blocks, DIM, Fun, MARGIN, MARGIN_L, MARGIN_T, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused, play,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 AI = (function() {
@@ -28,6 +28,8 @@ AI = (function() {
   AI.prototype.turn = 0;
 
   AI.prototype.move = null;
+
+  AI.prototype.gates = [];
 
   AI.prototype.getBlock = function(i) {
     if (i < 0 || i > 20) {
@@ -71,9 +73,51 @@ AI = (function() {
   AI.prototype.computeState = function() {};
 
   AI.prototype.computeStartValue = function(block, cpos) {
-    var len;
+    var arr, boost, gateScore, len, lenEnemy;
     len = this.countCorners(block, cpos);
-    return len;
+    lenEnemy = this.countCornersEnemy(block, cpos);
+    boost = 10;
+    arr = block.coord.filter((function(_this) {
+      return function(co) {
+        return co[0] + cpos[0] === _this.gates[0][0] && co[1] + cpos[1] === _this.gates[0][1];
+      };
+    })(this));
+    gateScore = arr.length > 0 ? boost : 0;
+    return len + lenEnemy * 2 + gateScore;
+  };
+
+  AI.prototype.searchGate = function(userId) {
+    var a, arr, b, c, d, i, j, _i, _ref, _results;
+    _results = [];
+    for (i = _i = 0, _ref = DIM - 2; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
+      _results.push((function() {
+        var _j, _ref1, _results1;
+        _results1 = [];
+        for (j = _j = 0, _ref1 = DIM - 2; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
+          a = SQ.playground.getBlockStat(i, j);
+          b = SQ.playground.getBlockStat(i + 1, j);
+          c = SQ.playground.getBlockStat(i, j + 1);
+          d = SQ.playground.getBlockStat(i + 1, j + 1);
+          arr = [a, b, c, d].filter(function(e) {
+            return e === userId;
+          });
+          if (!(arr.length === 2)) {
+            continue;
+          }
+          if ((a === userId && d === userId) || (b === userId && c === userId)) {
+            console.info('found: ' + i + '; ' + j + '; ' + userId);
+            if (SQ.playground.getBlockStat(i, j) === userId) {
+              this.gates.push([i, j + 1]);
+            } else {
+              this.gates.push([i, j]);
+            }
+          }
+          _results1.push(console.log(this.gates));
+        }
+        return _results1;
+      }).call(this));
+    }
+    return _results;
   };
 
   AI.prototype.computeValue = function(block, cpos) {
@@ -396,7 +440,9 @@ AI = (function() {
   };
 
   AI.prototype.computeStartupMoves = function() {
-    var arr, block, cpos, move, res, _i, _len, _ref;
+    var arr, block, cpos, move, res, userId, _i, _len, _ref;
+    userId = SQ.Users.current().id;
+    this.searchGate(userId);
     block = this.pickStartupBlocks();
     res = [];
     _ref = SQ.playground.getCorners();
@@ -486,6 +532,27 @@ AI = (function() {
   return AI;
 
 })();
+
+Animation = {};
+
+Animation.stack = {};
+
+Animation.play = function(block, type) {
+  var count, shake;
+  if (type === 'shake') {
+    count = 0;
+    shake = (function(_this) {
+      return function() {
+        block.position.x += count % 4 < 2 ? 2 : -2;
+        count += 1;
+        if (count > 20) {
+          return Animation.stack['shake'] = null;
+        }
+      };
+    })(this);
+    return Animation.stack['shake'] = shake;
+  }
+};
 
 MARGIN = 74;
 
@@ -784,6 +851,8 @@ Blocks = (function() {
       return function(data) {
         if (SQ.playground.placable(block)) {
           return SQ.playground.finishPlace(block);
+        } else {
+          return SQ.Anim.play(block, 'shake');
         }
       };
     })(this);
@@ -1087,10 +1156,26 @@ assert = function(test, name) {
 
 isPaused = false;
 
+play = function() {
+  var func, type, _ref, _results;
+  _ref = Animation.stack;
+  _results = [];
+  for (type in _ref) {
+    func = _ref[type];
+    if (func !== null) {
+      _results.push(func());
+    } else {
+      _results.push(void 0);
+    }
+  }
+  return _results;
+};
+
 animate = function() {
   if (isPaused) {
     update();
   }
+  play();
   renderer.render(stage);
   return requestAnimFrame(animate);
 };
@@ -1110,6 +1195,8 @@ MARGIN_T = 74;
 
 WIDTH = 30;
 
+DIM = 14;
+
 BLOCK = [[[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]], [[0, 0], [0, 1], [1, 1], [1, 2], [1, 3]], [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]], [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]], [[0, 0], [1, 0], [1, 1], [1, 2], [0, 2]], [[0, 0], [1, 0], [1, 1], [1, 2], [1, 3]], [[0, 0], [0, 1], [1, 1], [0, 2], [0, 3]], [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]], [[0, 0], [1, 0], [1, 1], [2, 1], [2, 2]], [[0, 0], [0, 1], [1, 0], [1, 1], [0, 2]], [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]], [[0, 0], [0, 1], [1, 1], [2, 1], [1, 2]], [[0, 0], [0, 1], [1, 1], [1, 2]], [[0, 0], [0, 1], [0, 2], [0, 3]], [[0, 0], [0, 1], [0, 2], [1, 2]], [[0, 0], [0, 1], [1, 0], [1, 1]], [[0, 0], [0, 1], [1, 1], [0, 2]], [[0, 0], [0, 1], [0, 2]], [[0, 0], [0, 1], [1, 1]], [[0, 0], [0, 1]], [[0, 0]]];
 
 Playground = (function() {
@@ -1120,6 +1207,7 @@ Playground = (function() {
     this.placeN = __bind(this.placeN, this);
     this.placable = __bind(this.placable, this);
     this.setOccupied = __bind(this.setOccupied, this);
+    this.getBlockStat = __bind(this.getBlockStat, this);
     this.getStat = __bind(this.getStat, this);
     this.execStep = __bind(this.execStep, this);
     this.initUser(2);
@@ -1280,15 +1368,15 @@ Playground = (function() {
       return tile.mousemove = tile.touchmove = function(data) {};
     };
     drawRule = function() {
-      var i, j, text, _i, _j, _results;
-      for (i = _i = 0; _i <= 19; i = ++_i) {
+      var i, j, text, _i, _j, _ref, _ref1, _results;
+      for (i = _i = 0, _ref = DIM - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
         text = new PIXI.Text(i);
         text.position.x = MARGIN_L + i * WIDTH - 10;
         text.position.y = MARGIN_T - WIDTH - 10;
         self.board.addChild(text);
       }
       _results = [];
-      for (j = _j = 0; _j <= 19; j = ++_j) {
+      for (j = _j = 0, _ref1 = DIM - 1; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
         text = new PIXI.Text(j);
         text.position.x = MARGIN_L - WIDTH - 10;
         text.position.y = MARGIN_T + j * WIDTH - 10;
@@ -1297,11 +1385,11 @@ Playground = (function() {
       return _results;
     };
     drawGrid = function() {
-      var gy, i, j, _i, _j;
-      for (i = _i = 0; _i <= 19; i = ++_i) {
+      var gy, i, j, _i, _j, _ref, _ref1;
+      for (i = _i = 0, _ref = DIM - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
         gy = [];
-        for (j = _j = 0; _j <= 19; j = ++_j) {
-          gy.push(self.getCoord([i, j]).concat([0, null]));
+        for (j = _j = 0, _ref1 = DIM - 1; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
+          gy.push(self.getCoord([i, j]).concat([-1, null]));
         }
         self.Grid.push(gy);
       }
@@ -1362,6 +1450,17 @@ Playground = (function() {
     return this.Grid[y][x][2];
   };
 
+  Playground.prototype.getBlockStat = function(x, y) {
+    if (x < 0 || y < 0 || typeof this.Grid[y][x][2] !== 'number') {
+      return 0;
+    }
+    if (this.Grid[y][x][2] === -1) {
+      return 0;
+    } else {
+      return 1;
+    }
+  };
+
   Playground.prototype.getStatTable = function() {
     return this.Grid.map(function(row) {
       return row.map(function(b) {
@@ -1371,19 +1470,21 @@ Playground = (function() {
   };
 
   Playground.prototype.setOccupied = function(x, y, state) {
-    if (this.Grid[y][x][2] === 1) {
+    if (this.Grid[y][x][2] > -1) {
       return;
     }
-    if (state === 1) {
-      this.Grid[y][x][2] = 1;
+    if (typeof state === 'number') {
+      this.Grid[y][x][2] = state;
       return;
     }
-    this.Grid[y][x][2] = this.Grid[y][x][2] || [];
+    if (!(this.Grid[y][x][2] > -1)) {
+      this.Grid[y][x][2] = [];
+    }
     return this.Grid[y][x][2].push(state);
   };
 
   Playground.prototype.withinGrid = function(pos) {
-    if (pos[0] > -1 && pos[0] < 20 && pos[1] > -1 && pos[1] < 20) {
+    if (pos[0] > -1 && pos[0] < DIM && pos[1] > -1 && pos[1] < DIM) {
       return true;
     } else {
       return false;
@@ -1421,7 +1522,7 @@ Playground = (function() {
   };
 
   Playground.prototype.blockPlaced = function(pos) {
-    return this.getStat(pos[0], pos[1]) === 1;
+    return this.getStat(pos[0], pos[1]) > -1;
   };
 
   Playground.prototype.addCorners = function(block, cpos) {
@@ -1537,7 +1638,7 @@ Playground = (function() {
       pos = _ref[_i];
       _x = x + pos[0];
       _y = y + pos[1];
-      if (_x > 19 || _x < 0 || _y > 19 || _y < 0) {
+      if (_x > DIM - 1 || _x < 0 || _y > DIM - 1 || _y < 0) {
         console.log('fail - out of grid bound');
         return false;
       }
@@ -1549,7 +1650,7 @@ Playground = (function() {
         pos = _ref1[_j];
         _x = x + pos[0];
         _y = y + pos[1];
-        if ((_x === 19 && _y === 19) || (_x === 0 && _y === 0)) {
+        if ((_x === DIM - 1 && _y === DIM - 1) || (_x === 0 && _y === 0)) {
           console.log('pass - valid first step');
           validFistStep = true;
           break;
@@ -1591,7 +1692,7 @@ Playground = (function() {
   };
 
   Playground.prototype.occupied = function(x, y) {
-    return SQ.playground.getStat(x, y) === 1;
+    return SQ.playground.getStat(x, y) > -1;
   };
 
   Playground.prototype.placeN = function(type, index, pos) {
@@ -1644,9 +1745,11 @@ Playground = (function() {
   };
 
   Playground.prototype.writeStats = function(block) {
+    var userId;
+    userId = parseInt(SQ.Users.current().id);
     block.coord.map((function(_this) {
       return function(rp) {
-        _this.setOccupied(block.gx + rp[0], block.gy + rp[1], 1);
+        _this.setOccupied(block.gx + rp[0], block.gy + rp[1], userId);
         _this.corners[[block.gx + rp[0], block.gy + rp[1]].toString()] = {};
         return _this.borders[[block.gx + rp[0], block.gy + rp[1]].toString()] = {};
       };
@@ -1656,6 +1759,7 @@ Playground = (function() {
   };
 
   Playground.prototype.finishPlace = function(block, fromSync) {
+    mixpanel.track("place block");
     block.finish = true;
     this.writeStats(block);
     if (block.type === 'human') {
@@ -1738,7 +1842,7 @@ Playground = (function() {
     y = block.gy;
     return block.coord.map((function(_this) {
       return function(rp) {
-        return _this.setOccupied(x + rp[0], y + rp[1], 0);
+        return _this.setOccupied(x + rp[0], y + rp[1], -1);
       };
     })(this));
   };

@@ -3,8 +3,14 @@ assert = (test, name) ->
   console.assert(test, name)
 
 isPaused = false
+
+play = ->
+  for type, func of Animation.stack
+    func() unless func is null
+
 animate = ->
   update() if isPaused
+  play()
   renderer.render(stage)
   requestAnimFrame(animate)
 
@@ -17,6 +23,7 @@ PIXI.Texture.Draw = (cb) ->
 MARGIN_L = 274
 MARGIN_T = 74
 WIDTH = 30
+DIM = 14
 
 BLOCK = [
 
@@ -188,22 +195,22 @@ class Playground
         # console.log data
 
     drawRule = () ->
-      for i in [0..19]
+      for i in [0..DIM-1]
         text = new PIXI.Text(i)
         text.position.x = MARGIN_L + i * WIDTH - 10
         text.position.y = MARGIN_T - WIDTH - 10
         self.board.addChild(text)
-      for j in [0..19]
+      for j in [0..DIM-1]
         text = new PIXI.Text(j)
         text.position.x = MARGIN_L - WIDTH - 10
         text.position.y = MARGIN_T + j * WIDTH - 10
         self.board.addChild(text)
 
     drawGrid = () ->
-      for i in [0..19]
+      for i in [0..DIM-1]
         gy = []
-        for j in [0..19]
-          gy.push self.getCoord([i, j]).concat([0, null]);
+        for j in [0..DIM-1]
+          gy.push self.getCoord([i, j]).concat([-1, null]);
         self.Grid.push gy
 
       self.Grid.map (i) ->
@@ -253,23 +260,30 @@ class Playground
     return 0 if x < 0 or y < 0
     return @Grid[y][x][2]
 
+  getBlockStat: (x, y) =>
+    return 0 if x < 0 or y < 0 or typeof @Grid[y][x][2] isnt 'number'
+    if @Grid[y][x][2] is -1
+      return 0
+    else
+      return 1
+
   getStatTable: () ->
     return @Grid.map (row) ->
       return row.map (b) ->
         return b[2]
 
   setOccupied: (x, y, state) =>
-    if @Grid[y][x][2] == 1
+    if @Grid[y][x][2] > -1
       return
-    if state == 1
-      @Grid[y][x][2] = 1
+    if typeof state is 'number'
+      @Grid[y][x][2] = state
       return
 
-    @Grid[y][x][2] = @Grid[y][x][2] || []
+    @Grid[y][x][2] = [] unless @Grid[y][x][2] > -1
     @Grid[y][x][2].push state
 
   withinGrid: (pos) ->
-    if pos[0] > -1 and pos[0] < 20 and pos[1] > -1 and pos[1] < 20
+    if pos[0] > -1 and pos[0] < DIM and pos[1] > -1 and pos[1] < DIM
       return true
     else
       return false
@@ -296,7 +310,7 @@ class Playground
     return res
 
   blockPlaced: (pos) ->
-    return @getStat(pos[0], pos[1]) is 1
+    return @getStat(pos[0], pos[1]) > -1
 
   # add corners and return corner count of current user
   addCorners: (block, cpos) ->
@@ -386,7 +400,7 @@ class Playground
     for pos in block.coord
       _x = x + pos[0]
       _y = y + pos[1]
-      if _x > 19 or _x < 0 or _y > 19 or _y < 0
+      if _x > DIM-1 or _x < 0 or _y > DIM-1 or _y < 0
         console.log 'fail - out of grid bound'
         return false
 
@@ -397,7 +411,7 @@ class Playground
       for pos in block.coord
         _x = x + pos[0]
         _y = y + pos[1]
-        if (_x is 19 and _y is 19) or (_x is 0 and _y is 0)
+        if (_x is DIM-1 and _y is DIM-1) or (_x is 0 and _y is 0)
           console.log 'pass - valid first step'
           validFistStep = true
           break
@@ -429,7 +443,7 @@ class Playground
 
   # occupied by either user
   occupied: (x, y) ->
-    SQ.playground.getStat(x, y) is 1
+    SQ.playground.getStat(x, y) > -1
 
   placeN: (type, index, pos) =>
     x = parseInt pos[0]
@@ -475,8 +489,10 @@ class Playground
     block.gy = coord[1]
 
   writeStats: (block) ->
+    userId = parseInt SQ.Users.current().id
+
     block.coord.map (rp) =>
-      @setOccupied(block.gx + rp[0], block.gy + rp[1], 1)
+      @setOccupied(block.gx + rp[0], block.gy + rp[1], userId)
       @corners[[block.gx + rp[0], block.gy + rp[1]].toString()] = {}
       @borders[[block.gx + rp[0], block.gy + rp[1]].toString()] = {}
 
@@ -484,6 +500,8 @@ class Playground
     @addBorders(block, [block.gx, block.gy])
 
   finishPlace: (block, fromSync) =>
+    mixpanel.track("place block");
+
     block.finish = true
     # relative position
     @writeStats(block)
@@ -555,7 +573,7 @@ class Playground
     y = block.gy
 
     block.coord.map (rp) =>
-      @setOccupied(x + rp[0], y + rp[1], 0)
+      @setOccupied(x + rp[0], y + rp[1], -1)
 
   placeBack: (block) ->
     block.position.x = block.position.ox

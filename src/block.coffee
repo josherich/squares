@@ -207,6 +207,8 @@ class Blocks
     block.confirm.mouseup = (data) =>
       if SQ.playground.placable(block)
         SQ.playground.finishPlace(block)
+      else
+        SQ.Anim.play(block, 'shake')
 
     block.cancel.mouseup = () =>
       SQ.playground.placeBack(block)
