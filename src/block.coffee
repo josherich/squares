@@ -180,7 +180,7 @@ class Blocks
     Circle = (x, y, radius, frame) ->
       res = new PIXI.Graphics()
       res.lineStyle(0)
-      res.beginFill(0xffffff, 1)
+      res.beginFill(0xffffff, .5)
       res.drawCircle(0, 0, radius)
       res.endFill()
       res.x = x
@@ -197,8 +197,8 @@ class Blocks
       block.addChild(res)
       return res
 
-    block.fliph = Circle(10 + offsetx, 10, 10, 7)
-    block.flipv = Circle(10 + offsetx, 30, 10, 8)
+    block.fliph = Circle(10 + offsetx, 10, 10, 8)
+    block.flipv = Circle(10 + offsetx, 30, 10, 7)
     block.confirm = Circle(30 + offsetx, 10, 10, 9)
     block.cancel = Circle(30 + offsetx, 30, 10, 10)
     block.rotatecw = Circle(50 + offsetx, 10, 10, 5)
@@ -236,11 +236,6 @@ class Blocks
   placeBack: (block) ->
     SQ.playground.placeBack(block)
 
-  getPos: (block) ->
-    gx = Math.max(0, Math.round((block.position.x - MARGIN_L) / WIDTH))
-    gy = Math.max(0, Math.round((block.position.y - MARGIN_T) / WIDTH))
-    return [gx, gy]
-
   setupTouchEvent: (block) ->
     self = this
     block.mouseover = (data) ->
@@ -266,7 +261,7 @@ class Blocks
       this.dragging = false
       block.scale = {x:1, y:1}
 
-      gxy = self.getPos(block)
+      gxy = Grid.getPosition(block.position.x, block.position.y)
       # if self.placable(block, gxy)
       self.place(block, gxy)
         # window.alert(gx.toString() + ':' + gy.toString())

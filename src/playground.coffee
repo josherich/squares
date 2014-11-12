@@ -218,7 +218,6 @@ class Playground
           _drawGrid_block(j[0], j[1])
           return j
         return i
-      console.log stage.children
 
     self.Block_el.red = PIXI.Sprite.fromFrame(0)
     console.log(@Block_el)
@@ -500,8 +499,10 @@ class Playground
     @addBorders(block, [block.gx, block.gy])
 
   finishPlace: (block, fromSync) =>
-    mixpanel.track("place block");
-
+    # mixpanel.track("place block");
+    analytics.track('events', {
+      step: 'place-block'
+    });
     block.finish = true
     # relative position
     @writeStats(block)

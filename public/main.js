@@ -1,4 +1,4 @@
-var AI, Animation, BLOCK, Blocks, DIM, Fun, MARGIN, MARGIN_L, MARGIN_T, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused, play,
+var AI, Animation, BLOCK, Blocks, DIM, Fun, Grid, Landing, MARGIN, MARGIN_L, MARGIN_T, Mediator, Playground, User, Users, WIDTH, animate, assert, isPaused, play,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 AI = (function() {
@@ -537,13 +537,13 @@ Animation = {};
 
 Animation.stack = {};
 
-Animation.play = function(block, type) {
-  var count, shake;
+Animation.play = function(target, type) {
+  var count, explode, shake;
   if (type === 'shake') {
     count = 0;
     shake = (function(_this) {
       return function() {
-        block.position.x += count % 4 < 2 ? 2 : -2;
+        target.position.x += count % 4 < 2 ? 2 : -2;
         count += 1;
         if (count > 20) {
           return Animation.stack['shake'] = null;
@@ -551,6 +551,17 @@ Animation.play = function(block, type) {
       };
     })(this);
     return Animation.stack['shake'] = shake;
+  } else if (type === 'explode') {
+    explode = (function(_this) {
+      return function() {
+        target.scale.x += .1;
+        target.scale.y += .1;
+        if (target.scale.x > 20) {
+          return Animation.stack['explode'] = null;
+        }
+      };
+    })(this);
+    return Animation.stack['explode'] = explode;
   }
 };
 
@@ -826,7 +837,7 @@ Blocks = (function() {
       var icon, res;
       res = new PIXI.Graphics();
       res.lineStyle(0);
-      res.beginFill(0xffffff, 1);
+      res.beginFill(0xffffff, .5);
       res.drawCircle(0, 0, radius);
       res.endFill();
       res.x = x;
@@ -841,8 +852,8 @@ Blocks = (function() {
       block.addChild(res);
       return res;
     };
-    block.fliph = Circle(10 + offsetx, 10, 10, 7);
-    block.flipv = Circle(10 + offsetx, 30, 10, 8);
+    block.fliph = Circle(10 + offsetx, 10, 10, 8);
+    block.flipv = Circle(10 + offsetx, 30, 10, 7);
     block.confirm = Circle(30 + offsetx, 10, 10, 9);
     block.cancel = Circle(30 + offsetx, 30, 10, 10);
     block.rotatecw = Circle(50 + offsetx, 10, 10, 5);
@@ -895,13 +906,6 @@ Blocks = (function() {
     return SQ.playground.placeBack(block);
   };
 
-  Blocks.prototype.getPos = function(block) {
-    var gx, gy;
-    gx = Math.max(0, Math.round((block.position.x - MARGIN_L) / WIDTH));
-    gy = Math.max(0, Math.round((block.position.y - MARGIN_T) / WIDTH));
-    return [gx, gy];
-  };
-
   Blocks.prototype.setupTouchEvent = function(block) {
     var self;
     self = this;
@@ -942,7 +946,7 @@ Blocks = (function() {
         x: 1,
         y: 1
       };
-      gxy = self.getPos(block);
+      gxy = Grid.getPosition(block.position.x, block.position.y);
       return self.place(block, gxy);
     };
     return block.mousemove = block.touchmove = function(data) {
@@ -1147,6 +1151,301 @@ Fun.copy = function(obj) {
     }
   }
   return res;
+};
+
+Grid = {
+  _grid: [],
+  dim: 0,
+  init: function(dim, draw, getCoord, randomBlock) {
+    var drawGrid;
+    this.randomBlock = randomBlock;
+    this._grid = [];
+    this.dim = dim;
+    drawGrid = (function(_this) {
+      return function() {
+        var gy, i, j, _i, _j, _ref, _ref1;
+        for (i = _i = 0, _ref = dim - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
+          gy = [];
+          for (j = _j = 0, _ref1 = dim - 1; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
+            gy.push(getCoord([i, j]).concat([-1, null]));
+          }
+          _this._grid.push(gy);
+        }
+        return _this._grid.map(function(i, _i) {
+          i.map(function(j, _j) {
+            draw(j[0], j[1], _j, _i);
+            return j;
+          });
+          return i;
+        });
+      };
+    })(this);
+    drawGrid();
+    return this._grid;
+  },
+  getCoord: function(x, y) {
+    return [MARGIN_L + x * WIDTH, MARGIN_T + y * WIDTH];
+  },
+  getPosition: function(x, y) {
+    var gx, gy;
+    gx = Math.max(0, Math.round((x - MARGIN_L) / WIDTH));
+    gy = Math.max(0, Math.round((y - MARGIN_T) / WIDTH));
+    return [gx, gy];
+  },
+  getDistance: function(x1, y1, x2, y2) {
+    var xy1, xy2;
+    xy1 = this.getPosition(x1, y1);
+    xy2 = this.getPosition(x2, y2);
+    return [Math.abs(xy1[0] - xy2[0]), Math.abs(xy1[1] - xy2[1])];
+  },
+  getNeighbor: function(x, y) {
+    var x1, x2, x3, x4, y1, y2, y3, y4;
+    x1 = x;
+    y1 = y - 1 < 0 ? 0 : y - 1;
+    x2 = x + 1 > this.dim ? this.dim : x + 1;
+    y2 = y;
+    x3 = x;
+    y3 = y + 1 > this.dim ? this.dim : y + 1;
+    x4 = x - 1 < 0 ? 0 : x - 1;
+    y4 = y;
+    return [[x1, y1], [x2, y2], [x3, y3], [x4, y4], [x4, y1], [x2, y1], [x2, y3], [x4, y3]];
+  },
+  clearMap: function() {
+    var k, v, _ref, _results;
+    _ref = Landing.map;
+    _results = [];
+    for (k in _ref) {
+      v = _ref[k];
+      v.alpha = .5;
+      _results.push(v.marked = false);
+    }
+    return _results;
+  },
+  markBlock: function(xy) {
+    var block;
+    block = Landing.map[xy[0] + ',' + xy[1]];
+    block.marked = true;
+    return block.alpha = 1;
+  },
+  place: (function(_this) {
+    return function(block, coord, fromSync) {
+      var pos;
+      block.put = true;
+      pos = _this.getCoord(coord);
+      block.position = {
+        x: pos[0] - WIDTH / 2,
+        y: pos[1] - WIDTH / 2
+      };
+      block.gx = coord[0];
+      return block.gy = coord[1];
+    };
+  })(this),
+  recur: function(x1, y1, x2, y2, g) {
+    var around, cand, res;
+    if (x1 === x2 && y1 === y2) {
+      return;
+    }
+    around = this.getNeighbor(x1, y1);
+    cand = around.map((function(_this) {
+      return function(pos) {
+        var h, _x, _y;
+        _x = pos[0];
+        _y = pos[1];
+        h = Math.abs(x2 - _x) + Math.abs(y2 - _y);
+        return {
+          pos: pos,
+          val: g + 1 + h
+        };
+      };
+    })(this));
+    cand = cand.filter((function(_this) {
+      return function(pos) {
+        var block;
+        pos = pos.pos;
+        block = Landing.map[pos[0] + ',' + pos[1]];
+        return block.taken !== 1 && block.marked !== true;
+      };
+    })(this));
+    cand.sort(function(a, b) {
+      if (a.val > b.val) {
+        return 1;
+      } else if (a.val < b.val) {
+        return -1;
+      } else {
+        return 0;
+      }
+    });
+    console.log(cand[0]);
+    this.markBlock(cand[0].pos);
+    res = cand[0].pos;
+    if (cand[0].val > 50) {
+      console.log('max lookup distance');
+      return;
+    }
+    g += 1;
+    return this.recur(res[0], res[1], x2, y2, g);
+  },
+  astar: function(x1, y1, x2, y2) {
+    var g;
+    this._grid.map(function(g) {
+      return g;
+    });
+    g = 0;
+    if (this.randomBlock[x2 + ',' + y2]) {
+      return;
+    }
+    return this.recur(x1, y1, x2, y2, g);
+  },
+  getCurrent: function() {
+    var center, self;
+    self = this;
+    center = this.getCoord(10, 10);
+    return stage.mousemove = function(data) {
+      var newPosition, target;
+      newPosition = data.getLocalPosition(this.children[0]);
+      console.log(self.getDistance(center[0], center[1], newPosition.x, newPosition.y));
+      target = self.getPosition(newPosition.x, newPosition.y);
+      self.clearMap();
+      return self.astar(10, 10, target[0], target[1]);
+    };
+  }
+};
+
+play = function() {
+  var func, type, _ref, _results;
+  _ref = Animation.stack;
+  _results = [];
+  for (type in _ref) {
+    func = _ref[type];
+    if (func !== null) {
+      _results.push(func());
+    } else {
+      _results.push(void 0);
+    }
+  }
+  return _results;
+};
+
+animate = function() {
+  if (isPaused) {
+    update();
+  }
+  play();
+  renderer.render(stage);
+  return requestAnimFrame(animate);
+};
+
+PIXI.Texture.Draw = function(cb) {
+  var canvas;
+  canvas = document.createElement('canvas');
+  if (typeof cb === 'function') {
+    cb(canvas);
+  }
+  return PIXI.Texture.fromCanvas(canvas);
+};
+
+Landing = {
+  map: {},
+  init: function(start) {
+    this.drawBackground();
+    this.initContainer();
+    return this.loadResource((function(_this) {
+      return function() {
+        _this.initAna();
+        Grid.getCurrent();
+        _this.initGrid(start);
+        return requestAnimFrame(animate);
+      };
+    })(this));
+  },
+  initAna: function() {
+    analytics.identify(Date.now(), {
+      name: 'Josherich' + Date.now(),
+      email: 'josherichchen@gmail.com'
+    });
+    return analytics.track('events', {
+      step: 'landing'
+    });
+  },
+  initContainer: function() {
+    return document.body.appendChild(renderer.view);
+  },
+  drawBackground: function() {
+    var bg;
+    bg = new PIXI.Sprite(PIXI.Texture.Draw(function(canvas) {
+      var context, grd;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      context = canvas.getContext('2d');
+      context.rect(0, 0, canvas.width, canvas.height);
+      grd = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grd.addColorStop(0, '#6EB8D0');
+      grd.addColorStop(1, '#D78C93');
+      context.fillStyle = grd;
+      return context.fill();
+    }));
+    return stage.addChild(bg);
+  },
+  loadResource: function(onFinishLoading) {
+    var loader, tileAtlas;
+    tileAtlas = ["public/images.json"];
+    loader = new PIXI.AssetLoader(tileAtlas);
+    loader.onComplete = onFinishLoading;
+    return loader.load();
+  },
+  randomBlock: function() {
+    var arr, i, n, _i;
+    arr = {};
+    n = Math.floor(Math.random() * 10) + 40;
+    for (i = _i = 0; 0 <= n ? _i <= n : _i >= n; i = 0 <= n ? ++_i : --_i) {
+      arr[[Math.floor(Math.random() * 20) + ',' + Math.floor(Math.random() * 20)]] = true;
+    }
+    return arr;
+  },
+  initGrid: function(start) {
+    var dim, draw, getCoord, randomBlock, self;
+    self = this;
+    dim = 21;
+    randomBlock = this.randomBlock();
+    getCoord = function(pos) {
+      return [MARGIN_L + pos[0] * WIDTH, MARGIN_T + pos[1] * WIDTH];
+    };
+    draw = function(x, y, _x, _y) {
+      var tile;
+      if (_x === 10 && _y === 10) {
+        tile = PIXI.Sprite.fromFrame(6);
+        tile.taken = 1;
+        tile.mousedown = tile.touchstart = function(data) {
+          Animation.play(tile, 'explode');
+          return setTimeout(function() {
+            return start();
+          }, 2000);
+        };
+      } else if (randomBlock[_y + ',' + _x]) {
+        tile = PIXI.Sprite.fromFrame(11);
+        tile.taken = 1;
+      } else {
+        tile = PIXI.Sprite.fromFrame(4);
+      }
+      tile.interactive = true;
+      tile.buttonMode = true;
+      tile.isSelected = false;
+      tile.theVal = [x, y];
+      tile.position.x = x;
+      tile.position.y = y;
+      tile.anchor.x = 0.5;
+      tile.anchor.y = 0.5;
+      tile.tint = 0xffffff;
+      tile.alpha = 0.5;
+      if (_x === 10 && _x === _y) {
+        tile.alpha = 1;
+        this.tint = 0xff00ff;
+      }
+      self.map[_y + ',' + _x] = tile;
+      return stage.addChild(tile);
+    };
+    return Grid.init(dim, draw, getCoord, randomBlock);
+  }
 };
 
 assert = function(test, name) {
@@ -1393,14 +1692,13 @@ Playground = (function() {
         }
         self.Grid.push(gy);
       }
-      self.Grid.map(function(i) {
+      return self.Grid.map(function(i) {
         i.map(function(j) {
           _drawGrid_block(j[0], j[1]);
           return j;
         });
         return i;
       });
-      return console.log(stage.children);
     };
     self.Block_el.red = PIXI.Sprite.fromFrame(0);
     console.log(this.Block_el);
@@ -1759,7 +2057,9 @@ Playground = (function() {
   };
 
   Playground.prototype.finishPlace = function(block, fromSync) {
-    mixpanel.track("place block");
+    analytics.track('events', {
+      step: 'place-block'
+    });
     block.finish = true;
     this.writeStats(block);
     if (block.type === 'human') {
