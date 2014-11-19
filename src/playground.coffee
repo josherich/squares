@@ -221,7 +221,7 @@ class Playground
 
     self.Block_el.red = PIXI.Sprite.fromFrame(0)
     console.log(@Block_el)
-    drawRule()
+    # drawRule()
     drawGrid()
     SQ.Grid = self.Grid
 
@@ -260,11 +260,11 @@ class Playground
     return @Grid[y][x][2]
 
   getBlockStat: (x, y) =>
-    return 0 if x < 0 or y < 0 or typeof @Grid[y][x][2] isnt 'number'
+    return null if x < 0 or y < 0 or typeof @Grid[y][x][2] isnt 'number'
     if @Grid[y][x][2] is -1
-      return 0
+      return null
     else
-      return 1
+      return @Grid[y][x][2]
 
   getStatTable: () ->
     return @Grid.map (row) ->
@@ -394,13 +394,13 @@ class Playground
     # flag = false unless @corners[[x, y].toString()]
     x = if coord then coord[0] else block.gx
     y = if coord then coord[1] else block.gy
-    console.log '=== placable start ==='
+    # console.log '=== placable start ==='
     # inside grid
     for pos in block.coord
       _x = x + pos[0]
       _y = y + pos[1]
       if _x > DIM-1 or _x < 0 or _y > DIM-1 or _y < 0
-        console.log 'fail - out of grid bound'
+        # console.log 'fail - out of grid bound'
         return false
 
 
@@ -411,7 +411,7 @@ class Playground
         _x = x + pos[0]
         _y = y + pos[1]
         if (_x is DIM-1 and _y is DIM-1) or (_x is 0 and _y is 0)
-          console.log 'pass - valid first step'
+          # console.log 'pass - valid first step'
           validFistStep = true
           break
       return unless validFistStep
@@ -419,13 +419,13 @@ class Playground
     # at least one block in current corners
     block.coord.map (pos) =>
       if @isOnCorners([x + pos[0], y + pos[1]])
-        console.log 'pass - at least 1 corner hit'
+        # console.log 'pass - at least 1 corner hit'
         flag = true
 
     # none in border blocks.
     block.coord.map (pos) =>
       if @isOnBorders([x + pos[0], y + pos[1]])
-        console.log 'fail - border taken'
+        # console.log 'fail - border taken'
         flag = false
 
     # first turn
@@ -434,10 +434,10 @@ class Playground
     # should be empty
     block.coord.map (rp) =>
       if @occupied(x + rp[0], y + rp[1])
-        console.log 'fail - grid taken'
+        # console.log 'fail - grid taken'
         flag = false
 
-    console.log '=== placable end ==='
+    # console.log '=== placable end ==='
     return flag
 
   # occupied by either user
@@ -520,7 +520,7 @@ class Playground
       @turn += 1
       SQ.Users.finishTurn = false
 
-    @drawCorners()
+    # @drawCorners()
     SQ.Users.nextTurn()
 
   drawCorners: ->
@@ -577,8 +577,23 @@ class Playground
       @setOccupied(x + rp[0], y + rp[1], -1)
 
   placeBack: (block) ->
-    block.position.x = block.position.ox
-    block.position.y = block.position.oy
+    block.position.x = block.ox
+    block.position.y = block.oy
+    block.put = false
+
+    block.removeChild(block.fliph)
+    block.fliph = null
+    block.removeChild(block.flipv)
+    block.flipv = null
+    block.removeChild(block.confirm)
+    block.confirm = null
+    block.removeChild(block.cancel)
+    block.cancel = null
+    block.removeChild(block.rotatecw)
+    block.rotatecw = null
+    block.removeChild(block.rotateacw)
+    block.rotateacw = null
+
     SQ.board.removeChild(block)
     block.scale = {x:.5, y:.5}
     SQ.panel.addChild(block)
@@ -604,7 +619,6 @@ class Playground
       gy = e[0];
       console.assert(gy[0] is (MARGIN_L + WIDTH * i), 'grid init')
       console.assert(gy[1] is MARGIN_T, 'grid init')
-      console.assert(gy[2] is 0, 'grid init')
       console.assert(gy[3] is null, 'grid init')
 
   setUserUI: (user) ->

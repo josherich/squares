@@ -95,12 +95,13 @@ Grid =
     cand = cand.filter (pos) =>
       pos = pos.pos
       block = Landing.map[pos[0] + ',' + pos[1]]
+      return unless block
       return block.taken isnt 1 and block.marked isnt true
 
     cand.sort (a, b) ->
       return if a.val > b.val then 1 else if a.val < b.val then -1 else  0
 
-    console.log cand[0]
+    # console.log cand[0]
     @markBlock cand[0].pos
 
     res = cand[0].pos
@@ -126,7 +127,7 @@ Grid =
     center = @getCoord(10,10)
     stage.mousemove = (data) ->
       newPosition = data.getLocalPosition this.children[0]
-      console.log self.getDistance(center[0], center[1], newPosition.x, newPosition.y)
+      # console.log self.getDistance(center[0], center[1], newPosition.x, newPosition.y)
       target = self.getPosition(newPosition.x, newPosition.y)
       self.clearMap()
       self.astar(10,10,target[0],target[1])

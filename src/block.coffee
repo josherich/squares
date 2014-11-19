@@ -317,8 +317,8 @@ class Blocks
     block.buttonMode = true
     block.position.x = Math.floor(index / 7) * 70
     block.position.y = (index % 7) * 30 * 3 + 70
-    block.position.ox = block.position.x
-    block.position.oy = block.position.y
+    block.ox = block.position.x
+    block.oy = block.position.y
     block.scale = {x:.5, y:.5}
 
     @drawDots(block, data, color)

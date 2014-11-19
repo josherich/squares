@@ -95,6 +95,8 @@ Landing =
           Animation.play(tile, 'explode')
           setTimeout () ->
             start()
+            tile.mousedown = tile.touchstart = null
+            stage.mousemove = null
           , 2000
       else if randomBlock[_y + ',' + _x]
         tile = PIXI.Sprite.fromFrame(11)

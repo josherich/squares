@@ -11,7 +11,7 @@ class AI
 
   startupBlocks: [1,2,3,4,5,6,7,8]
 
-  availableBlocks: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+  availableBlocks: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
   corners: {}
 
@@ -62,13 +62,26 @@ class AI
     lenEnemy = @countCornersEnemy(block, cpos)
 
     boost = 10
-    arr = block.coord.filter (co) =>
-      return co[0] + cpos[0] is @gates[0][0] and co[1] + cpos[1] is @gates[0][1]
-    gateScore = if arr.length > 0 then boost else 0
+    if (@gates.length > 0)
+      arr = block.coord.filter (co) =>
+        return co[0] + cpos[0] is @gates[0][0] and co[1] + cpos[1] is @gates[0][1]
+      gateScore = if arr.length > 0 then boost else 0
+    else
+      gateScore = 0
+
+    # direct boost
+    # boost for block that lead to a larger space
+
+    # GATE SCORE
+    # big boost for block placed on gate
+    # greate boost for block placed on one step from gate
+    # if both above impossible, boost for block closest to gate
 
     return len + lenEnemy * 2 + gateScore
 
   searchGate: (userId) ->
+    userId = 0
+    console.log('======= gate searching ========')
     for i in [0..DIM-2]
       for j in [0..DIM-2]
         a = SQ.playground.getBlockStat(i, j)
@@ -85,7 +98,6 @@ class AI
             @gates.push [i,j+1]
           else
             @gates.push [i,j]
-        console.log @gates
 
   computeValue: (block, cpos) ->
     len = @countCorners(block, cpos)
