@@ -2,6 +2,7 @@ Mediator =
   handlerMap: {}
 
   init: ->
+    @handlerMap = {}
     window.addEventListener('message', this.processMessage, false)
 
   publish: (id, params) ->

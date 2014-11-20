@@ -52,10 +52,19 @@ BLOCK = [
 
 class Playground
   constructor: ()->
+    @corner = {}
+    @borders = {}
+    @Block_el = {}
+    @Users = {}
+    @Grid = []
+    @currentPlayer = {}
+    @turn = 0
+    @step = 0
+
     @initUser(2)
     @drawBackground()
     @initContainer()
-    @initGameControl()
+    # @initGameControl()
     # @initFBSync()
     @loadResource () =>
       @initGrid()
@@ -169,6 +178,7 @@ class Playground
 
   initGrid: () ->
     self = this
+    self.Grid = []
     _drawGrid_block = (x, y) ->
       tile = PIXI.Sprite.fromFrame(4)
       tile.interactive = true

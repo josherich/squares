@@ -4,6 +4,7 @@ class Users
   userIndex: 0
 
   constructor: (n) ->
+    @_users = []
     if n is 2
       me = new User(this, 'human', 0)
       you = new User(this, 'ai', 1)

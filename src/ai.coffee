@@ -1,6 +1,18 @@
 class AI
   constructor: (playground) ->
     @Blocks = playground.AIBlocks
+    @startupBlocks = [1,2,3,4,5,6,7,8]
+    @availableBlocks = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+
+    @corners = {}
+    @borders = {}
+    @grid = {}
+    @step = 0
+    @turn = 0
+    @move = null
+
+    # key gates, try to penetrate them
+    @gates = []
 
   # 2 / 4 person
   mode: 'defaultMode'
@@ -8,25 +20,6 @@ class AI
   expertRules: []
 
   strategyMode: []
-
-  startupBlocks: [1,2,3,4,5,6,7,8]
-
-  availableBlocks: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
-
-  corners: {}
-
-  borders: {}
-
-  grid: {}
-
-  step: 0
-
-  turn: 0
-
-  move: null
-
-  # key gates, try to penetrate them
-  gates: []
 
   getBlock: (i) ->
     return null if i < 0 or i > 20
@@ -333,7 +326,7 @@ class AI
     for index, i in @startupBlocks
       if i is rand
         @startupBlocks.splice(i, 1)
-        @availableBlocks.splice(@availableBlocks.indexOf(index),1)
+        # @availableBlocks.splice(@availableBlocks.indexOf(index),1)
         return @getBlock(index)
 
   pickBlocks: () ->
@@ -416,15 +409,11 @@ class AI
     console.log 'move: block-' + move.block + '; corner(' + move.cpos.toString() + ');' + 'center dot: (' + move.dot.toString() + '); with value: ' + move.cornerN;
     @makeMove(move, block)
 
-
   computeEndingMoves: ->
-
 
   applyExpertRules: ->
 
-
   switchStrategyMode: ->
-
 
   compute: () ->
     if @turn is 0

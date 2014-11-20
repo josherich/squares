@@ -5,6 +5,15 @@ AI = (function() {
   function AI(playground) {
     this.makeMove = __bind(this.makeMove, this);
     this.Blocks = playground.AIBlocks;
+    this.startupBlocks = [1, 2, 3, 4, 5, 6, 7, 8];
+    this.availableBlocks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+    this.corners = {};
+    this.borders = {};
+    this.grid = {};
+    this.step = 0;
+    this.turn = 0;
+    this.move = null;
+    this.gates = [];
   }
 
   AI.prototype.mode = 'defaultMode';
@@ -12,24 +21,6 @@ AI = (function() {
   AI.prototype.expertRules = [];
 
   AI.prototype.strategyMode = [];
-
-  AI.prototype.startupBlocks = [1, 2, 3, 4, 5, 6, 7, 8];
-
-  AI.prototype.availableBlocks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-
-  AI.prototype.corners = {};
-
-  AI.prototype.borders = {};
-
-  AI.prototype.grid = {};
-
-  AI.prototype.step = 0;
-
-  AI.prototype.turn = 0;
-
-  AI.prototype.move = null;
-
-  AI.prototype.gates = [];
 
   AI.prototype.getBlock = function(i) {
     if (i < 0 || i > 20) {
@@ -418,7 +409,6 @@ AI = (function() {
       index = _ref[i];
       if (i === rand) {
         this.startupBlocks.splice(i, 1);
-        this.availableBlocks.splice(this.availableBlocks.indexOf(index), 1);
         return this.getBlock(index);
       }
     }
@@ -1062,6 +1052,7 @@ Blocks = (function() {
 Mediator = {
   handlerMap: {},
   init: function() {
+    this.handlerMap = {};
     return window.addEventListener('message', this.processMessage, false);
   },
   publish: function(id, params) {
@@ -1519,10 +1510,17 @@ Playground = (function() {
     this.getBlockStat = __bind(this.getBlockStat, this);
     this.getStat = __bind(this.getStat, this);
     this.execStep = __bind(this.execStep, this);
+    this.corner = {};
+    this.borders = {};
+    this.Block_el = {};
+    this.Users = {};
+    this.Grid = [];
+    this.currentPlayer = {};
+    this.turn = 0;
+    this.step = 0;
     this.initUser(2);
     this.drawBackground();
     this.initContainer();
-    this.initGameControl();
     this.loadResource((function(_this) {
       return function() {
         _this.initGrid();
@@ -1658,6 +1656,7 @@ Playground = (function() {
   Playground.prototype.initGrid = function() {
     var drawGrid, drawRule, self, _drawGrid_block;
     self = this;
+    self.Grid = [];
     _drawGrid_block = function(x, y) {
       var tile;
       tile = PIXI.Sprite.fromFrame(4);
@@ -2271,6 +2270,7 @@ Users = (function() {
 
   function Users(n) {
     var me, you;
+    this._users = [];
     if (n === 2) {
       me = new User(this, 'human', 0);
       you = new User(this, 'ai', 1);
