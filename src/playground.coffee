@@ -52,7 +52,7 @@ BLOCK = [
 
 class Playground
   constructor: ()->
-    @corner = {}
+    @corners = {}
     @borders = {}
     @Block_el = {}
     @Users = {}
@@ -64,11 +64,11 @@ class Playground
     @initUser(2)
     @drawBackground()
     @initContainer()
-    # @initGameControl()
+    @initGameControl()
     # @initFBSync()
     @loadResource () =>
       @initGrid()
-
+      @initPlayerState()
       @initHumanBlock BLOCK, 0
 
       @drawBlockPanel(BLOCK)
@@ -120,14 +120,15 @@ class Playground
 
   initGameControl: () ->
     self = this
-    # multiple bind
-    $('.pause').click () ->
-      isPaused = !isPaused
-      window.alert('game paused: ' + isPaused)
-      unless isPaused
-        requestAnimFrame(animate)
 
-    $('.restart').click () ->
+    restart = @restart = new PIXI.Text('RESTART')
+    restart.interactive = true
+    restart.buttonMode = true
+
+    restart.position.x = MARGIN_L + WIDTH * DIM
+    restart.position.y = MARGIN_T + WIDTH * DIM
+    SQ.board.addChild(restart)
+    restart.mousedown = restart.touchstart = () ->
       $('canvas').remove()
       window.stage = null
       window.stage = new PIXI.Stage(0xffffff)
@@ -136,11 +137,27 @@ class Playground
       @board = null
       SQ.playground = new Playground()
 
-    $('#move').click () ->
-      n = $('.block-n').val()
-      x = parseInt $('.dx').val()
-      y = parseInt $('.dy').val()
-      self.placeN(n, x, y)
+    # multiple bind
+    # $('.pause').click () ->
+    #   isPaused = !isPaused
+    #   window.alert('game paused: ' + isPaused)
+    #   unless isPaused
+    #     requestAnimFrame(animate)
+
+    # $('.restart').click () ->
+    #   $('canvas').remove()
+    #   window.stage = null
+    #   window.stage = new PIXI.Stage(0xffffff)
+    #   window.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight)
+    #   SQ.board = null
+    #   @board = null
+    #   SQ.playground = new Playground()
+
+    # $('#move').click () ->
+    #   n = $('.block-n').val()
+    #   x = parseInt $('.dx').val()
+    #   y = parseInt $('.dy').val()
+    #   self.placeN(n, x, y)
 
   initFBSync: () ->
     window.FBref = new Firebase("https://squares-game.firebaseio.com/");
@@ -175,6 +192,30 @@ class Playground
 
   getCoord: (pos) ->
     return [MARGIN_L + pos[0] * WIDTH, MARGIN_T + pos[1] * WIDTH]
+
+  initPlayerState: () ->
+    @tile_player = tile_player = PIXI.Sprite.fromFrame(0)
+    tile_player.position.x = MARGIN_L + WIDTH * 13 + 40
+    tile_player.position.y = MARGIN_T
+    tile_player.scale.x = .3
+    tile_player.scale.y = .3
+    SQ.board.addChild(tile_player)
+
+    @tile_ai = tile_ai = PIXI.Sprite.fromFrame(1)
+    tile_ai.position.x = MARGIN_L - 80
+    tile_ai.position.y = MARGIN_T
+    tile_ai.scale.x = .3
+    tile_ai.scale.y = .3
+    tile_ai.alpha = 0.5
+    SQ.board.addChild(tile_ai)
+
+  player_on: () ->
+    @tile_ai.alpha = 0.5
+    @tile_player.alpha = 1
+
+  ai_on: () ->
+    @tile_ai.alpha = 1
+    @tile_player.alpha = 0.5
 
   initGrid: () ->
     self = this

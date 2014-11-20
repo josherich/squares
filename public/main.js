@@ -64,7 +64,7 @@ AI = (function() {
   AI.prototype.computeState = function() {};
 
   AI.prototype.computeStartValue = function(block, cpos) {
-    var arr, boost, gateScore, len, lenEnemy;
+    var arr, boost, gateScore, len, lenEnemy, length;
     len = this.countCorners(block, cpos);
     lenEnemy = this.countCornersEnemy(block, cpos);
     boost = 10;
@@ -78,7 +78,13 @@ AI = (function() {
     } else {
       gateScore = 0;
     }
-    return len + lenEnemy * 2 + gateScore;
+    length = 0;
+    block.coord.map((function(_this) {
+      return function(co) {
+        return length += co[0] + cpos[0] + co[1] + cpos[1];
+      };
+    })(this));
+    return len + lenEnemy * 2 + gateScore + length;
   };
 
   AI.prototype.searchGate = function(userId) {
@@ -514,6 +520,7 @@ AI = (function() {
   AI.prototype.switchStrategyMode = function() {};
 
   AI.prototype.compute = function() {
+    SQ.playground.ai_on();
     if (this.turn === 0) {
       this.computeFirstMove();
     } else if (this.turn < 5) {
@@ -523,6 +530,7 @@ AI = (function() {
     } else if (this.turn > 17) {
       this.computeEndingMoves();
     }
+    setTimeout(SQ.playground.player_on.bind(SQ.playground), 1000);
     return console.log("I'm done thinking, bitch!");
   };
 
@@ -1510,7 +1518,7 @@ Playground = (function() {
     this.getBlockStat = __bind(this.getBlockStat, this);
     this.getStat = __bind(this.getStat, this);
     this.execStep = __bind(this.execStep, this);
-    this.corner = {};
+    this.corners = {};
     this.borders = {};
     this.Block_el = {};
     this.Users = {};
@@ -1521,9 +1529,11 @@ Playground = (function() {
     this.initUser(2);
     this.drawBackground();
     this.initContainer();
+    this.initGameControl();
     this.loadResource((function(_this) {
       return function() {
         _this.initGrid();
+        _this.initPlayerState();
         _this.initHumanBlock(BLOCK, 0);
         _this.drawBlockPanel(BLOCK);
         _this.initAIBlock(BLOCK, 1);
@@ -1577,16 +1587,15 @@ Playground = (function() {
   };
 
   Playground.prototype.initGameControl = function() {
-    var self;
+    var restart, self;
     self = this;
-    $('.pause').click(function() {
-      isPaused = !isPaused;
-      window.alert('game paused: ' + isPaused);
-      if (!isPaused) {
-        return requestAnimFrame(animate);
-      }
-    });
-    $('.restart').click(function() {
+    restart = this.restart = new PIXI.Text('RESTART');
+    restart.interactive = true;
+    restart.buttonMode = true;
+    restart.position.x = MARGIN_L + WIDTH * DIM;
+    restart.position.y = MARGIN_T + WIDTH * DIM;
+    SQ.board.addChild(restart);
+    return restart.mousedown = restart.touchstart = function() {
       $('canvas').remove();
       window.stage = null;
       window.stage = new PIXI.Stage(0xffffff);
@@ -1594,14 +1603,7 @@ Playground = (function() {
       SQ.board = null;
       this.board = null;
       return SQ.playground = new Playground();
-    });
-    return $('#move').click(function() {
-      var n, x, y;
-      n = $('.block-n').val();
-      x = parseInt($('.dx').val());
-      y = parseInt($('.dy').val());
-      return self.placeN(n, x, y);
-    });
+    };
   };
 
   Playground.prototype.initFBSync = function() {
@@ -1651,6 +1653,33 @@ Playground = (function() {
 
   Playground.prototype.getCoord = function(pos) {
     return [MARGIN_L + pos[0] * WIDTH, MARGIN_T + pos[1] * WIDTH];
+  };
+
+  Playground.prototype.initPlayerState = function() {
+    var tile_ai, tile_player;
+    this.tile_player = tile_player = PIXI.Sprite.fromFrame(0);
+    tile_player.position.x = MARGIN_L + WIDTH * 13 + 40;
+    tile_player.position.y = MARGIN_T;
+    tile_player.scale.x = .3;
+    tile_player.scale.y = .3;
+    SQ.board.addChild(tile_player);
+    this.tile_ai = tile_ai = PIXI.Sprite.fromFrame(1);
+    tile_ai.position.x = MARGIN_L - 80;
+    tile_ai.position.y = MARGIN_T;
+    tile_ai.scale.x = .3;
+    tile_ai.scale.y = .3;
+    tile_ai.alpha = 0.5;
+    return SQ.board.addChild(tile_ai);
+  };
+
+  Playground.prototype.player_on = function() {
+    this.tile_ai.alpha = 0.5;
+    return this.tile_player.alpha = 1;
+  };
+
+  Playground.prototype.ai_on = function() {
+    this.tile_ai.alpha = 1;
+    return this.tile_player.alpha = 0.5;
   };
 
   Playground.prototype.initGrid = function() {

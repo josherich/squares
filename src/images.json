@@ -74,7 +74,7 @@
 },
 {
   "filename": "tick.png",
-  "frame": {"x": 100,"y": 244,"w": 20,"h": 20},
+  "frame": {"x": 100,"y": 242,"w": 20,"h": 20},
   "rotated": false,
   "trimmed": false,
   "spriteSourceSize": {"x": 0, "y": 0, "w": 20, "h":20},

@@ -62,6 +62,10 @@ class AI
     else
       gateScore = 0
 
+    length = 0
+    block.coord.map (co) =>
+      length += co[0] + cpos[0] + co[1] + cpos[1]
+
     # direct boost
     # boost for block that lead to a larger space
 
@@ -70,7 +74,7 @@ class AI
     # greate boost for block placed on one step from gate
     # if both above impossible, boost for block closest to gate
 
-    return len + lenEnemy * 2 + gateScore
+    return len + lenEnemy * 2 + gateScore + length
 
   searchGate: (userId) ->
     userId = 0
@@ -416,6 +420,7 @@ class AI
   switchStrategyMode: ->
 
   compute: () ->
+    SQ.playground.ai_on()
     if @turn is 0
       @computeFirstMove()
     else if @turn < 5
@@ -424,6 +429,8 @@ class AI
       @computeMoves()
     else if @turn > 17
       @computeEndingMoves()
+
+    setTimeout(SQ.playground.player_on.bind(SQ.playground), 1000)
 
     console.log("I'm done thinking, bitch!")
 
